@@ -1,0 +1,191 @@
+{
+  "data_root": "/root/autodl-tmp/wormi-data/virtualhome-semantic-check",
+  "manifest": "/root/autodl-tmp/wormi-data/virtualhome-semantic-check/virtualhome_manifest.json",
+  "errors": [],
+  "warnings": [
+    "generated trajectory count is 1176, paper count is 1023",
+    "scene cache entries with no rows: ['TrimmedTestScene6_graph__v0']",
+    "effective scenes with rows: 19, expected 20",
+    "actions with unchanged observation: {'walk': {'unchanged': 6, 'total': 2178}}"
+  ],
+  "file_stats": {
+    "test_seen_task_seen_scene.jsonl": {
+      "rows": 45,
+      "trajectories": 10
+    },
+    "test_seen_task_unseen_scene.jsonl": {
+      "rows": 670,
+      "trajectories": 165
+    },
+    "test_unseen_task_seen_scene.jsonl": {
+      "rows": 1204,
+      "trajectories": 294
+    },
+    "test_unseen_task_unseen_scene.jsonl": {
+      "rows": 2535,
+      "trajectories": 623
+    },
+    "scene_0/train.jsonl": {
+      "rows": 56,
+      "trajectories": 14
+    },
+    "scene_1/train.jsonl": {
+      "rows": 59,
+      "trajectories": 14
+    },
+    "scene_2/train.jsonl": {
+      "rows": 56,
+      "trajectories": 14
+    },
+    "scene_3/train.jsonl": {
+      "rows": 59,
+      "trajectories": 14
+    },
+    "scene_4/train.jsonl": {
+      "rows": 56,
+      "trajectories": 14
+    },
+    "scene_5/train.jsonl": {
+      "rows": 55,
+      "trajectories": 14
+    }
+  },
+  "total_rows": 4795,
+  "trajectories": 1176,
+  "train_test_overlap": 0,
+  "family_row_counts": {
+    "open": 166,
+    "placein": 2195,
+    "puton": 2252,
+    "turnon": 182
+  },
+  "action_counts": {
+    "grab": 1002,
+    "open": 522,
+    "put": 563,
+    "putin": 439,
+    "switchon": 91,
+    "walk": 2178
+  },
+  "trajectory_lengths": {
+    "2": 174,
+    "4": 563,
+    "5": 439
+  },
+  "seen_tasks": 16,
+  "unseen_tasks": 62,
+  "expected_seen_tasks": 16,
+  "expected_unseen_tasks": 62,
+  "missing_seen_tasks": [],
+  "missing_unseen_tasks": [],
+  "missing_all_tasks": [],
+  "extra_seen_tasks": [],
+  "extra_unseen_tasks": [],
+  "scenes_present": [
+    "TrimmedTestScene1_graph__v0",
+    "TrimmedTestScene1_graph__v1",
+    "TrimmedTestScene1_graph__v2",
+    "TrimmedTestScene2_graph__v0",
+    "TrimmedTestScene2_graph__v1",
+    "TrimmedTestScene2_graph__v2",
+    "TrimmedTestScene3_graph__v0",
+    "TrimmedTestScene3_graph__v1",
+    "TrimmedTestScene3_graph__v2",
+    "TrimmedTestScene4_graph__v0",
+    "TrimmedTestScene4_graph__v1",
+    "TrimmedTestScene4_graph__v2",
+    "TrimmedTestScene5_graph__v0",
+    "TrimmedTestScene5_graph__v1",
+    "TrimmedTestScene5_graph__v2",
+    "TrimmedTestScene6_graph__v1",
+    "TrimmedTestScene6_graph__v2",
+    "TrimmedTestScene7_graph__v0",
+    "TrimmedTestScene7_graph__v1"
+  ],
+  "paper_seen_scene_keys": [
+    "TrimmedTestScene1_graph__v0",
+    "TrimmedTestScene2_graph__v0",
+    "TrimmedTestScene3_graph__v0",
+    "TrimmedTestScene4_graph__v0",
+    "TrimmedTestScene5_graph__v0",
+    "TrimmedTestScene6_graph__v1"
+  ],
+  "goal_visibility": {
+    "open": {
+      "visible": 83
+    },
+    "placein": {
+      "visible": 439
+    },
+    "puton": {
+      "visible": 563
+    },
+    "turnon": {
+      "visible": 91
+    }
+  },
+  "unchanged_observations_by_action": {
+    "walk": {
+      "unchanged": 6,
+      "total": 2178
+    }
+  },
+  "replay": {
+    "failures": 0,
+    "obs_mismatches": 0,
+    "next_obs_mismatches": 0,
+    "goal_failures": 0
+  },
+  "loader": {
+    "test_seen_task_seen_scene.jsonl": {
+      "raw_rows": 45,
+      "action_samples": 45,
+      "world_samples": 90
+    },
+    "test_seen_task_unseen_scene.jsonl": {
+      "raw_rows": 670,
+      "action_samples": 670,
+      "world_samples": 1340
+    },
+    "test_unseen_task_seen_scene.jsonl": {
+      "raw_rows": 1204,
+      "action_samples": 1204,
+      "world_samples": 2408
+    },
+    "test_unseen_task_unseen_scene.jsonl": {
+      "raw_rows": 2535,
+      "action_samples": 2535,
+      "world_samples": 5070
+    },
+    "scene_0/train.jsonl": {
+      "raw_rows": 56,
+      "action_samples": 56,
+      "world_samples": 112
+    },
+    "scene_1/train.jsonl": {
+      "raw_rows": 59,
+      "action_samples": 59,
+      "world_samples": 118
+    },
+    "scene_2/train.jsonl": {
+      "raw_rows": 56,
+      "action_samples": 56,
+      "world_samples": 112
+    },
+    "scene_3/train.jsonl": {
+      "raw_rows": 59,
+      "action_samples": 59,
+      "world_samples": 118
+    },
+    "scene_4/train.jsonl": {
+      "raw_rows": 56,
+      "action_samples": 56,
+      "world_samples": 112
+    },
+    "scene_5/train.jsonl": {
+      "raw_rows": 55,
+      "action_samples": 55,
+      "world_samples": 110
+    }
+  }
+}

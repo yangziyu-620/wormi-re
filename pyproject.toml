@@ -1,0 +1,40 @@
+[build-system]
+requires = ["setuptools>=61", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "wormi"
+version = "0.1.0"
+description = "World Model Implanting for Test-time Adaptation of Embodied Agents"
+readme = "Readme.md"
+requires-python = ">=3.12"
+license = { file = "LICENSE" }
+authors = [
+    { name = "Anonymous", email = "anonymous@example.com" }
+]
+urls = { "Homepage" = "https://github.com/anonymous/example" }
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: OS Independent"
+]
+dependencies = [
+    "datasets==3.0.1",
+    "evaluate==0.4.3",
+    "rank-bm25==0.2.2",
+    "schedulefree==1.4",
+    "sentence_transformers==3.2.1",
+    "tensorboard",
+    "torch==2.5.1",
+    "tqdm",
+    "transformers==4.45.2",
+    "trl==0.11.3",
+    "rich",
+]
+
+[project.scripts]
+wormi = "wormi.scripts.main:main"
+
+[tool.setuptools.packages.find]
+include = ["wormi*"]
+exclude = ["figures*"]

@@ -1,0 +1,314 @@
+{
+  "data_root": "/root/autodl-tmp/wormi-data/virtualhome",
+  "errors": [],
+  "warnings": [
+    "generated trajectory count is 1096, paper count is 1023",
+    "seen task count is 15, expected 16",
+    "unseen task count is 55, expected 62",
+    "missing seen tasks: [('placein', ('drawing', 'sink'))]",
+    "missing unseen tasks: [('open', ('door',)), ('placein', ('chair', 'sink')), ('placein', ('chair', 'toaster')), ('placein', ('drawing', 'toaster')), ('placein', ('keyboard', 'sink')), ('placein', ('keyboard', 'toaster')), ('turnon', ('light',))]",
+    "scene cache entries with no rows: ['TrimmedTestScene6_graph__v0']",
+    "effective scenes with rows: 19, expected 20",
+    "goal facts hidden from final next_observation: {'open': {'hidden': 78}, 'placein': {'hidden': 366}, 'puton': {'visible': 532, 'hidden': 38}, 'turnon': {'hidden': 82}}",
+    "no `(object, is, state)` triples found in observations",
+    "actions with unchanged observation: {'open': {'unchanged': 444, 'total': 444}, 'switchon': {'unchanged': 82, 'total': 82}, 'walk': {'unchanged': 15, 'total': 2032}}"
+  ],
+  "file_stats": {
+    "test_seen_task_seen_scene.jsonl": {
+      "rows": 24,
+      "trajectories": 6
+    },
+    "test_seen_task_unseen_scene.jsonl": {
+      "rows": 595,
+      "trajectories": 149
+    },
+    "test_unseen_task_seen_scene.jsonl": {
+      "rows": 1133,
+      "trajectories": 280
+    },
+    "test_unseen_task_unseen_scene.jsonl": {
+      "rows": 2389,
+      "trajectories": 590
+    },
+    "scene_0/train.jsonl": {
+      "rows": 46,
+      "trajectories": 11
+    },
+    "scene_1/train.jsonl": {
+      "rows": 42,
+      "trajectories": 10
+    },
+    "scene_2/train.jsonl": {
+      "rows": 49,
+      "trajectories": 12
+    },
+    "scene_3/train.jsonl": {
+      "rows": 53,
+      "trajectories": 13
+    },
+    "scene_4/train.jsonl": {
+      "rows": 48,
+      "trajectories": 12
+    },
+    "scene_5/train.jsonl": {
+      "rows": 51,
+      "trajectories": 13
+    }
+  },
+  "total_rows": 4430,
+  "trajectories": 1096,
+  "train_test_overlap": 0,
+  "family_row_counts": {
+    "open": 156,
+    "placein": 1830,
+    "puton": 2280,
+    "turnon": 164
+  },
+  "action_counts": {
+    "grab": 936,
+    "open": 444,
+    "put": 570,
+    "putin": 366,
+    "switchon": 82,
+    "walk": 2032
+  },
+  "trajectory_lengths": {
+    "2": 160,
+    "4": 570,
+    "5": 366
+  },
+  "seen_tasks": 15,
+  "unseen_tasks": 55,
+  "expected_seen_tasks": 16,
+  "expected_unseen_tasks": 62,
+  "missing_seen_tasks": [
+    [
+      "placein",
+      [
+        "drawing",
+        "sink"
+      ]
+    ]
+  ],
+  "missing_unseen_tasks": [
+    [
+      "open",
+      [
+        "door"
+      ]
+    ],
+    [
+      "placein",
+      [
+        "chair",
+        "sink"
+      ]
+    ],
+    [
+      "placein",
+      [
+        "chair",
+        "toaster"
+      ]
+    ],
+    [
+      "placein",
+      [
+        "drawing",
+        "toaster"
+      ]
+    ],
+    [
+      "placein",
+      [
+        "keyboard",
+        "sink"
+      ]
+    ],
+    [
+      "placein",
+      [
+        "keyboard",
+        "toaster"
+      ]
+    ],
+    [
+      "turnon",
+      [
+        "light"
+      ]
+    ]
+  ],
+  "missing_all_tasks": [
+    [
+      "open",
+      [
+        "door"
+      ]
+    ],
+    [
+      "placein",
+      [
+        "chair",
+        "sink"
+      ]
+    ],
+    [
+      "placein",
+      [
+        "chair",
+        "toaster"
+      ]
+    ],
+    [
+      "placein",
+      [
+        "drawing",
+        "sink"
+      ]
+    ],
+    [
+      "placein",
+      [
+        "drawing",
+        "toaster"
+      ]
+    ],
+    [
+      "placein",
+      [
+        "keyboard",
+        "sink"
+      ]
+    ],
+    [
+      "placein",
+      [
+        "keyboard",
+        "toaster"
+      ]
+    ],
+    [
+      "turnon",
+      [
+        "light"
+      ]
+    ]
+  ],
+  "scenes_present": [
+    "TrimmedTestScene1_graph__v0",
+    "TrimmedTestScene1_graph__v1",
+    "TrimmedTestScene1_graph__v2",
+    "TrimmedTestScene2_graph__v0",
+    "TrimmedTestScene2_graph__v1",
+    "TrimmedTestScene2_graph__v2",
+    "TrimmedTestScene3_graph__v0",
+    "TrimmedTestScene3_graph__v1",
+    "TrimmedTestScene3_graph__v2",
+    "TrimmedTestScene4_graph__v0",
+    "TrimmedTestScene4_graph__v1",
+    "TrimmedTestScene4_graph__v2",
+    "TrimmedTestScene5_graph__v0",
+    "TrimmedTestScene5_graph__v1",
+    "TrimmedTestScene5_graph__v2",
+    "TrimmedTestScene6_graph__v1",
+    "TrimmedTestScene6_graph__v2",
+    "TrimmedTestScene7_graph__v0",
+    "TrimmedTestScene7_graph__v1"
+  ],
+  "paper_seen_scene_keys": [
+    "TrimmedTestScene1_graph__v0",
+    "TrimmedTestScene2_graph__v0",
+    "TrimmedTestScene3_graph__v0",
+    "TrimmedTestScene4_graph__v0",
+    "TrimmedTestScene5_graph__v0",
+    "TrimmedTestScene6_graph__v1"
+  ],
+  "goal_visibility": {
+    "open": {
+      "hidden": 78
+    },
+    "placein": {
+      "hidden": 366
+    },
+    "puton": {
+      "visible": 532,
+      "hidden": 38
+    },
+    "turnon": {
+      "hidden": 82
+    }
+  },
+  "unchanged_observations_by_action": {
+    "open": {
+      "unchanged": 444,
+      "total": 444
+    },
+    "switchon": {
+      "unchanged": 82,
+      "total": 82
+    },
+    "walk": {
+      "unchanged": 15,
+      "total": 2032
+    }
+  },
+  "replay": {
+    "failures": 0,
+    "obs_mismatches": 0,
+    "next_obs_mismatches": 0,
+    "goal_failures": 0
+  },
+  "loader": {
+    "test_seen_task_seen_scene.jsonl": {
+      "raw_rows": 24,
+      "action_samples": 24,
+      "world_samples": 48
+    },
+    "test_seen_task_unseen_scene.jsonl": {
+      "raw_rows": 595,
+      "action_samples": 595,
+      "world_samples": 1190
+    },
+    "test_unseen_task_seen_scene.jsonl": {
+      "raw_rows": 1133,
+      "action_samples": 1133,
+      "world_samples": 2266
+    },
+    "test_unseen_task_unseen_scene.jsonl": {
+      "raw_rows": 2389,
+      "action_samples": 2389,
+      "world_samples": 4778
+    },
+    "scene_0/train.jsonl": {
+      "raw_rows": 46,
+      "action_samples": 46,
+      "world_samples": 92
+    },
+    "scene_1/train.jsonl": {
+      "raw_rows": 42,
+      "action_samples": 42,
+      "world_samples": 84
+    },
+    "scene_2/train.jsonl": {
+      "raw_rows": 49,
+      "action_samples": 49,
+      "world_samples": 98
+    },
+    "scene_3/train.jsonl": {
+      "raw_rows": 53,
+      "action_samples": 53,
+      "world_samples": 106
+    },
+    "scene_4/train.jsonl": {
+      "raw_rows": 48,
+      "action_samples": 48,
+      "world_samples": 96
+    },
+    "scene_5/train.jsonl": {
+      "raw_rows": 51,
+      "action_samples": 51,
+      "world_samples": 102
+    }
+  }
+}
