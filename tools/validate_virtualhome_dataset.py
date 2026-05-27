@@ -18,6 +18,7 @@ import copy
 import json
 import os
 import random
+import statistics
 import re
 import sys
 from collections import Counter, defaultdict
@@ -256,6 +257,7 @@ def validate(args: argparse.Namespace) -> dict[str, Any]:
     scene_inits = json.loads(args.scene_inits_json.read_text())
     manifest_path = data_root / "virtualhome_manifest.json"
     manifest = json.loads(manifest_path.read_text()) if manifest_path.exists() else None
+    dataset_mode = (manifest or {}).get("dataset_mode", "easy_debug")
 
     for split, filename in ROOT_SPLITS.items():
         path = data_root / filename
@@ -279,6 +281,10 @@ def validate(args: argparse.Namespace) -> dict[str, Any]:
     rows_by_tid: dict[str, list[dict[str, Any]]] = defaultdict(list)
     tid_roles: dict[str, set[str]] = defaultdict(set)
     tid_files: dict[str, set[str]] = defaultdict(set)
+    row_keys_by_role: dict[str, set[tuple[str, str, str, str]]] = defaultdict(set)
+    trajectory_task: dict[str, tuple[str, tuple[str, ...]]] = {}
+    trajectory_action_seq: dict[str, tuple[str, ...]] = {}
+    trajectory_split: dict[str, str] = {}
     task_by_seen_bucket: dict[str, set[tuple[str, tuple[str, ...]]]] = {
         "seen": set(),
         "unseen": set(),
@@ -357,6 +363,14 @@ def validate(args: argparse.Namespace) -> dict[str, Any]:
             rows_by_tid[tid].append({"row": row, "role": role, "file": rel})
             tid_roles[tid].add(role)
             tid_files[tid].add(rel)
+            row_keys_by_role[role].add((
+                row["instruction"],
+                row["observation"],
+                row["action"],
+                row["next_observation"],
+            ))
+            trajectory_task[tid] = task_id
+            trajectory_split[tid] = expected_split
             scenes_present.add(str(meta["scene"]))
 
         file_stats[rel]["trajectories"] = len(
@@ -402,9 +416,20 @@ def validate(args: argparse.Namespace) -> dict[str, Any]:
             errors.append(f"{tid}: mixed task_args values")
 
         verbs = [_parse_action(r["action"])[0] for r in rows]
+        trajectory_action_seq[tid] = tuple(r["action"] for r in rows)
         expected_verbs = EXPECTED_ACTIONS[family]
-        if verbs != expected_verbs:
-            errors.append(f"{tid}: action sequence {verbs} != expected {expected_verbs}")
+        if dataset_mode == "easy_debug":
+            if verbs != expected_verbs:
+                errors.append(f"{tid}: action sequence {verbs} != expected {expected_verbs}")
+        else:
+            final_expected = expected_verbs[-1]
+            if not verbs or verbs[-1] != final_expected:
+                errors.append(
+                    f"{tid}: paper_like final verb {verbs[-1] if verbs else None!r} "
+                    f"!= expected {final_expected!r}"
+                )
+            if family in {"puton", "placein"} and "grab" not in verbs:
+                errors.append(f"{tid}: paper_like {family} trajectory has no grab action")
 
         final_triples = _parse_triples(rows[-1]["next_observation"])
         triple = _goal_triple(family, task_args)
@@ -413,7 +438,11 @@ def validate(args: argparse.Namespace) -> dict[str, Any]:
 
         try:
             init_graph = scene_inits[scene]
-            script_lines = [_script_line_from_action(r["action"], init_graph) for r in rows]
+            script_lines = [
+                r.get("_meta", {}).get("script_line")
+                or _script_line_from_action(r["action"], init_graph)
+                for r in rows
+            ]
             env_graph = EnvironmentGraph(copy.deepcopy(init_graph))
             executor = ScriptExecutor(env_graph, name_equivalence={})
             ok, _final, graph_state_list = executor.execute(
@@ -438,6 +467,30 @@ def validate(args: argparse.Namespace) -> dict[str, Any]:
         except Exception as exc:
             replay_failures += 1
             warnings.append(f"{tid}: replay exception {type(exc).__name__}: {exc}")
+
+    train_row_keys = row_keys_by_role.get("train", set())
+    test_row_keys = row_keys_by_role.get("test", set())
+    exact_row_overlap = train_row_keys & test_row_keys
+
+    train_tids = {tid for tid, roles in tid_roles.items() if "train" in roles}
+    test_tids = {tid for tid, roles in tid_roles.items() if "test" in roles}
+    train_sequences = {trajectory_action_seq.get(tid, ()) for tid in train_tids}
+    test_sequences = {trajectory_action_seq.get(tid, ()) for tid in test_tids}
+    exact_sequence_overlap = train_sequences & test_sequences
+
+    train_task_sequences: set[tuple[tuple[str, tuple[str, ...]], tuple[str, ...]]] = {
+        (trajectory_task[tid], trajectory_action_seq.get(tid, ()))
+        for tid in train_tids
+        if tid in trajectory_task
+    }
+    test_task_sequences: set[tuple[tuple[str, tuple[str, ...]], tuple[str, ...]]] = {
+        (trajectory_task[tid], trajectory_action_seq.get(tid, ()))
+        for tid in test_tids
+        if tid in trajectory_task
+    }
+    same_task_sequence_overlap = train_task_sequences & test_task_sequences
+    if exact_row_overlap:
+        errors.append(f"train/test exact row overlap: {len(exact_row_overlap)}")
 
     generated_trajectories = len(rows_by_tid)
     if generated_trajectories != 1023:
@@ -544,8 +597,31 @@ def validate(args: argparse.Namespace) -> dict[str, Any]:
     if goal_failures:
         errors.append(f"expert final graph goal failures: {goal_failures}")
 
+    lengths = [length for length, count in trajectory_lengths.items() for _ in range(count)]
+    length_stats = {
+        "mean": statistics.mean(lengths) if lengths else 0.0,
+        "median": statistics.median(lengths) if lengths else 0.0,
+        "min": min(lengths) if lengths else 0,
+        "max": max(lengths) if lengths else 0,
+    }
+    if lengths:
+        sorted_lengths = sorted(lengths)
+        length_stats["p10"] = sorted_lengths[int(0.10 * (len(sorted_lengths) - 1))]
+        length_stats["p90"] = sorted_lengths[int(0.90 * (len(sorted_lengths) - 1))]
+
+    split_episode_counts: Counter[str] = Counter(trajectory_split.values())
+    split_length_sums: Counter[str] = Counter()
+    for tid, seq in trajectory_action_seq.items():
+        split_length_sums[trajectory_split.get(tid, "unknown")] += len(seq)
+    split_avg_lengths = {
+        split: split_length_sums[split] / count
+        for split, count in split_episode_counts.items()
+        if count
+    }
+
     summary = {
         "data_root": str(data_root),
+        "dataset_mode": dataset_mode,
         "manifest": str(manifest_path) if manifest is not None else None,
         "errors": errors,
         "warnings": warnings,
@@ -553,9 +629,18 @@ def validate(args: argparse.Namespace) -> dict[str, Any]:
         "total_rows": sum(v["rows"] for v in file_stats.values()),
         "trajectories": generated_trajectories,
         "train_test_overlap": len(overlap),
+        "leakage": {
+            "trajectory_id_overlap": len(overlap),
+            "exact_row_overlap": len(exact_row_overlap),
+            "exact_action_sequence_overlap": len(exact_sequence_overlap),
+            "same_task_exact_action_sequence_overlap": len(same_task_sequence_overlap),
+        },
         "family_row_counts": dict(sorted(family_counts.items())),
         "action_counts": dict(sorted(action_counts.items())),
         "trajectory_lengths": dict(sorted(trajectory_lengths.items())),
+        "trajectory_length_stats": length_stats,
+        "split_episode_counts": dict(sorted(split_episode_counts.items())),
+        "split_avg_lengths": dict(sorted(split_avg_lengths.items())),
         "seen_tasks": len(seen_tasks),
         "unseen_tasks": len(unseen_tasks),
         "expected_seen_tasks": len(expected_seen_tasks),
@@ -608,6 +693,7 @@ def main() -> None:
 
     summary = validate(args)
     print(f"data_root: {summary['data_root']}")
+    print(f"dataset_mode: {summary['dataset_mode']}")
     print(f"rows: {summary['total_rows']}")
     print(f"trajectories: {summary['trajectories']}")
     print(f"train_test_overlap: {summary['train_test_overlap']}")
@@ -619,6 +705,10 @@ def main() -> None:
     print(f"family_row_counts: {summary['family_row_counts']}")
     print(f"action_counts: {summary['action_counts']}")
     print(f"trajectory_lengths: {summary['trajectory_lengths']}")
+    print(f"trajectory_length_stats: {summary['trajectory_length_stats']}")
+    print(f"split_episode_counts: {summary['split_episode_counts']}")
+    print(f"split_avg_lengths: {summary['split_avg_lengths']}")
+    print(f"leakage: {summary['leakage']}")
     print(f"replay: {summary['replay']}")
     print(f"goal_visibility: {summary['goal_visibility']}")
 

@@ -349,6 +349,18 @@ class WorMITrainer:
                 for x in curricula.train
             ]
 
+    def release_training_lock(self, lock: Lock):
+        if not lock.locked():
+            return
+        try:
+            lock.release()
+        except RuntimeError:
+            pass
+
+    def release_all_training_locks(self):
+        for lock in getattr(self, "training_lock", []):
+            self.release_training_lock(lock)
+
     def trainer_callback_factory(
         self,
         i: int,
@@ -367,7 +379,8 @@ class WorMITrainer:
         self.training_lock = [Lock() for _ in range(len(self.curricula.train))]
         self.trainers: list[WorMISubTrainer] = []
         self.trainer_threads: list[Thread] = []
-        self.panic: RuntimeError | None = None
+        self.panic: Exception | None = None
+        self.model_update_lock = Lock()
         self.device = self.model.device
 
         if not self.model.has_model_been_built:
@@ -446,8 +459,9 @@ class WorMITrainer:
             self.trainers.append(trainer)
             try:
                 trainer.train(save_model=(i == len(self.curricula.train) - 1))
-            except RuntimeError as e:
+            except Exception as e:
                 self.panic = e
+                self.release_all_training_locks()
 
         for lock in self.training_lock:
             lock.acquire(blocking=False)
@@ -617,7 +631,7 @@ class WorMITrainerCallback(Generic[T], TrainerCallback):
         **kwargs,
     ):
         if self.lock.locked() and self.next_lock.locked():
-            self.next_lock.release()
+            self.main_trainer.release_training_lock(self.next_lock)
         self.lock.acquire()
 
         if self.synchronize_trainers:
@@ -628,15 +642,17 @@ class WorMITrainerCallback(Generic[T], TrainerCallback):
                 self.on_iteration_start(args, state, control, **kwargs)
             self.on_curriculum_start(args, state, control, **kwargs)
 
-            self.model.remove_all()
-            for target in self.curriculum.world_models:
-                model = self.curricula.world_models[target]
-                aux_model = AutoModelForCausalLM.from_pretrained(
-                    model.model_name, torch_dtype=torch.bfloat16
-                )
-                aux_model.to(self.device)
-                self.model.implant(aux_model, model.connections)
-            self.model.to(self.device)
+            with self.main_trainer.model_update_lock:
+                with self.model.state_lock:
+                    self.model.remove_all()
+                    for target in self.curriculum.world_models:
+                        model = self.curricula.world_models[target]
+                        aux_model = AutoModelForCausalLM.from_pretrained(
+                            model.model_name, torch_dtype=torch.bfloat16
+                        )
+                        aux_model.to(self.device)
+                        self.model.implant(aux_model, model.connections)
+                    self.model.to(self.device)
 
         super().on_step_begin(args, state, control, **kwargs)
 
@@ -665,11 +681,12 @@ class WorMITrainerCallback(Generic[T], TrainerCallback):
             self.on_curriculum_end(args, state, control, **kwargs)
             if self.global_iter == self.curricula.num_iterations - 1:
                 control.should_training_stop = True
+                self.main_trainer.release_all_training_locks()
             if self.next_trainer_idx == 0:
                 self.global_iter += 1
                 self.on_iteration_end(args, state, control, **kwargs)
         else:
-            self.lock.release()
+            self.main_trainer.release_training_lock(self.lock)
 
     @override
     def on_train_end(
@@ -679,8 +696,10 @@ class WorMITrainerCallback(Generic[T], TrainerCallback):
         control: TrainerControl,
         **kwargs,
     ):
-        if self.next_lock.locked():
-            self.next_lock.release()
+        if control.should_training_stop:
+            self.main_trainer.release_all_training_locks()
+        self.main_trainer.release_training_lock(self.lock)
+        self.main_trainer.release_training_lock(self.next_lock)
         super().on_train_end(args, state, control, **kwargs)
 
     def on_iteration_start(

@@ -558,6 +558,290 @@ def _execute_candidate(
     return rows, None
 
 
+def _nodes_by_id(graph: dict) -> dict[int, dict]:
+    return {int(n["id"]): n for n in graph["nodes"]}
+
+
+def _class_node_ids(graph: dict, class_name: str) -> list[int]:
+    return [int(n["id"]) for n in graph["nodes"] if n["class_name"] == class_name]
+
+
+def _node_has_state_id(graph: dict, node_id: int, state: str) -> bool:
+    node = _nodes_by_id(graph).get(int(node_id))
+    return node is not None and state.upper() in set(node.get("states", []))
+
+
+def _node_category(graph: dict, node_id: int) -> str | None:
+    node = _nodes_by_id(graph).get(int(node_id))
+    return None if node is None else node.get("category")
+
+
+def _parents(graph: dict, node_id: int, relation: str = "INSIDE") -> list[int]:
+    relation = relation.upper()
+    return [
+        int(edge["to_id"])
+        for edge in graph["edges"]
+        if int(edge["from_id"]) == int(node_id) and edge["relation_type"] == relation
+    ]
+
+
+def _room_for_node(graph: dict, node_id: int) -> int | None:
+    """Return the containing room id, following INSIDE parents upward."""
+    nodes = _nodes_by_id(graph)
+    seen: set[int] = set()
+    frontier = [int(node_id)]
+    while frontier:
+        current = frontier.pop(0)
+        if current in seen:
+            continue
+        seen.add(current)
+        node = nodes.get(current)
+        if node is not None and node.get("category") == "Rooms":
+            return current
+        frontier.extend(_parents(graph, current, "INSIDE"))
+    return None
+
+
+def _agent_room(graph: dict) -> int | None:
+    for node in graph["nodes"]:
+        if node.get("category") == "Characters":
+            return _room_for_node(graph, int(node["id"]))
+    return None
+
+
+def _container_parent_for_node(graph: dict, node_id: int) -> int | None:
+    """Return the nearest non-room INSIDE parent, if any."""
+    for parent_id in _parents(graph, node_id, "INSIDE"):
+        if _node_category(graph, parent_id) != "Rooms":
+            return parent_id
+    return None
+
+
+def _select_class_node(
+    graph: dict,
+    class_name: str,
+    *,
+    prefer_state: str | None = None,
+    prefer_container_parent: bool = False,
+) -> int | None:
+    candidates = _class_node_ids(graph, class_name)
+    if not candidates:
+        return None
+
+    def score(node_id: int) -> tuple[int, int, int]:
+        state_score = int(
+            prefer_state is not None and _node_has_state_id(graph, node_id, prefer_state)
+        )
+        container_score = int(
+            prefer_container_parent and _container_parent_for_node(graph, node_id) is not None
+        )
+        room_score = int(_room_for_node(graph, node_id) is not None)
+        return (state_score, container_score, room_score)
+
+    return max(candidates, key=lambda nid: (score(nid), -nid))
+
+
+def _tok_for_node(graph: dict, node_id: int) -> str:
+    node = _nodes_by_id(graph)[int(node_id)]
+    return f"<{node['class_name']}> ({int(node['id'])})"
+
+
+def _class_for_node(graph: dict, node_id: int) -> str:
+    return str(_nodes_by_id(graph)[int(node_id)]["class_name"])
+
+
+def _append_walk(
+    graph: dict,
+    script_lines: list[str],
+    action_texts: list[str],
+    node_id: int | None,
+) -> None:
+    if node_id is None:
+        return
+    script_lines.append(f"[WALK] {_tok_for_node(graph, node_id)}")
+    action_texts.append(f"walk {_class_for_node(graph, node_id)}")
+
+
+def _append_unary(
+    verb: str,
+    graph: dict,
+    script_lines: list[str],
+    action_texts: list[str],
+    node_id: int,
+) -> None:
+    verb_map = {"grab": "GRAB", "open": "OPEN", "switchon": "SWITCHON"}
+    script_lines.append(f"[{verb_map[verb]}] {_tok_for_node(graph, node_id)}")
+    action_texts.append(f"{verb} {_class_for_node(graph, node_id)}")
+
+
+def _append_binary(
+    verb: str,
+    graph: dict,
+    script_lines: list[str],
+    action_texts: list[str],
+    source_id: int,
+    target_id: int,
+) -> None:
+    script_verb = "PUTIN" if verb == "putin" else "PUTBACK"
+    script_lines.append(
+        f"[{script_verb}] {_tok_for_node(graph, source_id)} {_tok_for_node(graph, target_id)}"
+    )
+    action_texts.append(
+        f"{verb} {_class_for_node(graph, source_id)} {_class_for_node(graph, target_id)}"
+    )
+
+
+def _paperlike_program(
+    family: str,
+    args: tuple[str, ...],
+    graph: dict,
+) -> tuple[list[str], list[str], dict] | tuple[None, None, dict]:
+    """Build a graph-aware expert program for a task in one house config.
+
+    The old atomic generator only emitted the shortest family template. This
+    planner deliberately uses the containing room and source/target containers
+    visible in the scene graph, so trajectories vary with house configuration.
+    """
+    debug: dict[str, object] = {"family": family, "args": list(args)}
+    script_lines: list[str] = []
+    action_texts: list[str] = []
+
+    if family in {"turnon", "open"}:
+        preferred = "OFF" if family == "turnon" else "CLOSED"
+        target_id = _select_class_node(graph, args[0], prefer_state=preferred)
+        if target_id is None:
+            return None, None, {"reason": "missing_object", **debug}
+        target_room = _room_for_node(graph, target_id)
+        if family == "turnon" and _node_has_state_id(graph, target_id, "ON"):
+            return None, None, {"reason": "already_satisfied", **debug}
+        if family == "open" and _node_has_state_id(graph, target_id, "OPEN"):
+            return None, None, {"reason": "already_satisfied", **debug}
+
+        start_room = _agent_room(graph)
+        _append_walk(graph, script_lines, action_texts, start_room)
+        _append_walk(graph, script_lines, action_texts, target_room)
+        _append_walk(graph, script_lines, action_texts, target_id)
+        _append_unary(
+            "switchon" if family == "turnon" else "open",
+            graph,
+            script_lines,
+            action_texts,
+            target_id,
+        )
+        debug.update({"target_id": target_id, "target_room": target_room, "start_room": start_room})
+        return script_lines, action_texts, debug
+
+    if family not in {"puton", "placein"}:
+        raise ValueError(family)
+
+    source_cls, target_cls = args
+    source_id = _select_class_node(graph, source_cls, prefer_container_parent=True)
+    target_id = _select_class_node(
+        graph,
+        target_cls,
+        prefer_state="CLOSED" if family == "placein" else None,
+    )
+    if source_id is None or target_id is None:
+        return None, None, {"reason": "missing_object", **debug}
+
+    source_room = _room_for_node(graph, source_id)
+    target_room = _room_for_node(graph, target_id)
+    source_container = _container_parent_for_node(graph, source_id)
+    if source_container is not None and source_container == target_id:
+        source_container = None
+
+    start_room = _agent_room(graph)
+    _append_walk(graph, script_lines, action_texts, start_room)
+    _append_walk(graph, script_lines, action_texts, source_room)
+    if source_container is not None:
+        _append_walk(graph, script_lines, action_texts, source_container)
+        if _node_has_state_id(graph, source_container, "CLOSED"):
+            _append_unary("open", graph, script_lines, action_texts, source_container)
+    _append_walk(graph, script_lines, action_texts, source_id)
+    _append_unary("grab", graph, script_lines, action_texts, source_id)
+    _append_walk(graph, script_lines, action_texts, source_room)
+    _append_walk(graph, script_lines, action_texts, target_room)
+    _append_walk(graph, script_lines, action_texts, target_id)
+    if family == "placein" and _node_has_state_id(graph, target_id, "CLOSED"):
+        _append_unary("open", graph, script_lines, action_texts, target_id)
+    _append_binary(
+        "putin" if family == "placein" else "put",
+        graph,
+        script_lines,
+        action_texts,
+        source_id,
+        target_id,
+    )
+    debug.update(
+        {
+            "source_id": source_id,
+            "target_id": target_id,
+            "source_room": source_room,
+            "target_room": target_room,
+            "source_container": source_container,
+            "start_room": start_room,
+        }
+    )
+    return script_lines, action_texts, debug
+
+
+def _execute_paperlike_candidate(
+    family: str,
+    args: tuple[str, ...],
+    scene_name: str,
+    init_graph: dict,
+    EnvironmentGraph,
+    read_script,
+    ScriptExecutor,
+    max_steps: int = 18,
+) -> tuple[list[dict] | None, str | None]:
+    script_lines, action_texts, debug = _paperlike_program(family, args, init_graph)
+    if script_lines is None or action_texts is None:
+        return None, str(debug.get("reason", "planner_failed"))
+    if len(action_texts) > max_steps:
+        return None, "too_long"
+    try:
+        env_graph = EnvironmentGraph(copy.deepcopy(init_graph))
+        script = read_script(", ".join(script_lines))
+        ok, _final, graph_state_list = ScriptExecutor(
+            env_graph, name_equivalence={}
+        ).execute(script, w_graph_list=True)
+    except Exception:
+        return None, "execution_exception"
+
+    if not ok:
+        return None, "execution_failed"
+    if len(graph_state_list) != len(action_texts) + 1:
+        return None, "state_action_misaligned"
+    if not _is_semantically_valid_trajectory(family, args, graph_state_list):
+        return None, "semantic_invalid"
+
+    instruction = instruction_text(family, args)
+    rows = []
+    trajectory_id = f"{scene_name}:{family}:{'|'.join(args)}"
+    for i, action_text in enumerate(action_texts):
+        rows.append(
+            {
+                "instruction": instruction,
+                "observation": format_observation(graph_state_list[i]),
+                "action": action_text,
+                "next_observation": format_observation(graph_state_list[i + 1]),
+                "_meta": {
+                    "scene": scene_name,
+                    "split": None,
+                    "task_args": list(args),
+                    "trajectory_id": trajectory_id,
+                    "step_index": i,
+                    "num_steps": len(action_texts),
+                    "generator_mode": "paper_like_graph_planner",
+                    "script_line": script_lines[i],
+                    "planner_debug": debug,
+                },
+            }
+        )
+    return rows, None
+
+
 def _downsample_manifest_trajectories(
     manifest: dict,
     target_trajectories: int,
@@ -670,11 +954,18 @@ def build(
     candidate_multiplier: int = 12,
     target_trajectories: int | None = None,
     seen_seen_eval_per_task: int = 2,
+    mode: str = "easy_debug",
 ) -> None:
+    if mode not in {"easy_debug", "paper_like"}:
+        raise ValueError(f"Unsupported VirtualHome build mode: {mode}")
+    if mode == "paper_like" and target_trajectories is None:
+        target_trajectories = 1023
+
     eg = _bootstrap_evolving_graph(vh_src)
     EnvironmentGraph = eg["environment"].EnvironmentGraph
     read_script = eg["scripts"].read_script_from_string
     ScriptExecutor = eg["execution"].ScriptExecutor
+    print(f"build mode: {mode}", flush=True)
 
     properties = json.loads(
         (vh_src / "virtualhome" / "resources" / "properties_data.json").read_text()
@@ -743,15 +1034,26 @@ def build(
         task_key = (fam, task_args)
         rows_by_scene = {}
         for scene_name, init in scene_inits.items():
-            rows, reason = _execute_candidate(
-                fam,
-                task_args,
-                scene_name,
-                init,
-                EnvironmentGraph,
-                read_script,
-                ScriptExecutor,
-            )
+            if mode == "paper_like":
+                rows, reason = _execute_paperlike_candidate(
+                    fam,
+                    task_args,
+                    scene_name,
+                    init,
+                    EnvironmentGraph,
+                    read_script,
+                    ScriptExecutor,
+                )
+            else:
+                rows, reason = _execute_candidate(
+                    fam,
+                    task_args,
+                    scene_name,
+                    init,
+                    EnvironmentGraph,
+                    read_script,
+                    ScriptExecutor,
+                )
             if rows is None:
                 skipped[reason or "unknown"] += 1
                 continue
@@ -774,23 +1076,26 @@ def build(
             task for task in candidate_instructions if task[0] == fam
         ]
         seen_candidates: list[
-            tuple[tuple[str, tuple[str, ...]], set[str], int]
+            tuple[tuple[str, tuple[str, ...]], set[str], set[str], int]
         ] = []
         selected_unseen: list[tuple[str, tuple[str, ...]]] = []
         for order, task in enumerate(fam_tasks):
             rows_by_scene = evaluate_task(task)
-            seen_coverage = set(rows_by_scene) & seen_scenes
+            valid_scenes = set(rows_by_scene)
+            seen_coverage = valid_scenes & seen_scenes
             if seen_coverage:
-                seen_candidates.append((task, seen_coverage, order))
+                seen_candidates.append((task, seen_coverage, valid_scenes, order))
         selected_seen: list[tuple[str, tuple[str, ...]]] = []
         uncovered_seen = set(seen_scenes)
         while len(selected_seen) < fam_quotas[fam] and seen_candidates:
-            best_idx, (best_task, best_coverage, _order) = max(
+            best_idx, (best_task, best_coverage, _valid_scenes, _order) = max(
                 enumerate(seen_candidates),
                 key=lambda item: (
                     len(item[1][1] & uncovered_seen),
                     len(item[1][1]),
-                    -item[1][2],
+                    len(item[1][2] & unseen_scenes),
+                    len(item[1][2]),
+                    -item[1][3],
                 ),
             )
             selected_seen.append(best_task)
@@ -804,14 +1109,23 @@ def build(
         seen_inst.update(selected_seen)
 
         unseen_need = TARGETS[fam] - fam_quotas[fam]
-        for task in fam_tasks:
+        unseen_candidates = []
+        for order, task in enumerate(fam_tasks):
             if task in seen_inst:
                 continue
             rows_by_scene = evaluate_task(task)
-            if set(rows_by_scene) & unseen_scenes:
-                selected_unseen.append(task)
-                if len(selected_unseen) >= unseen_need:
-                    break
+            valid_scenes = set(rows_by_scene)
+            unseen_coverage = valid_scenes & unseen_scenes
+            if unseen_coverage:
+                unseen_candidates.append((task, unseen_coverage, valid_scenes, order))
+        unseen_candidates.sort(
+            key=lambda item: (
+                -len(item[1]),
+                -len(item[2]),
+                item[3],
+            )
+        )
+        selected_unseen = [task for task, _unseen, _valid, _order in unseen_candidates[:unseen_need]]
         if len(selected_unseen) < unseen_need:
             raise ValueError(
                 f"Not enough semantically valid unseen tasks for {fam}: "
@@ -851,6 +1165,7 @@ def build(
     succeeded_by_scene: Counter = Counter()
     manifest = {
         "seed": seed,
+        "dataset_mode": mode,
         "targets": TARGETS,
         "seen_instruction_count": seen_instruction_count,
         "seen_family_quotas": fam_quotas,
@@ -1215,7 +1530,13 @@ def _build_arg_parser() -> argparse.ArgumentParser:
         "--target-trajectories",
         type=int,
         default=None,
-        help="Optional paper-count downsample target, e.g. 1023.",
+        help="Optional paper-count downsample target, e.g. 1023. Defaults to 1023 in paper_like mode.",
+    )
+    p.add_argument(
+        "--mode",
+        choices=["easy_debug", "paper_like"],
+        default="easy_debug",
+        help="easy_debug keeps the old atomic templates; paper_like uses graph-aware house-configuration trajectories.",
     )
     return p
 
@@ -1245,6 +1566,7 @@ def _run_build(args) -> None:
         candidate_multiplier=args.candidate_multiplier,
         target_trajectories=args.target_trajectories,
         seen_seen_eval_per_task=args.seen_seen_eval_per_task,
+        mode=args.mode,
     )
 
 

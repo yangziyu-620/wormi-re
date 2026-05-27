@@ -10,7 +10,8 @@ scripts for the VirtualHome and ALFWorld reproduction work.
 ## What This Fork Adds
 
 - `tools/build_virtualhome_dataset.py`: builds paper-style VirtualHome JSONL data from the official static program release.
-- `tools/build_alfworld_dataset.py`: builds ALFWorld textual-env JSONL data from official game files.
+- `tools/collect_alfworld_episodes.py`: collects ALFWorld textual-env expert episodes from official game files.
+- `tools/build_alfworld_dataset.py` and `tools/validate_alfworld_dataset.py`: materialize and validate ALFWorld protocol releases.
 - `tools/world_curricula_vh.py` and `tools/wormi_curricula_vh.py`: VirtualHome stage-1 world-model training and stage-2 WorMI adapter training curricula.
 - `tools/world_curricula_alfworld.py` and `tools/wormi_curricula_alfworld.py`: ALFWorld task-split curricula.
 - `wormi eval-table1`: offline Table-1-style JSONL evaluation.
@@ -131,10 +132,10 @@ Important outputs:
 
 ### ALFWorld
 
-For ALFWorld, keep the temporary venv and unzipped game files on `/tmp` or a
-large local disk to avoid inode quota problems. The builder writes room/task
-JSONL data, then the resplit script creates the six task-type directories used
-by the ALFWorld curricula.
+ALFWorld processing now mirrors the VirtualHome build/validate shape. The low-level
+collector produces stable room-based expert episodes, and the main builder
+materializes validated protocol releases with canonical episodes, method views,
+leakage reports, and split manifests.
 
 ```bash
 export DATA_DISK=/root/autodl-tmp
@@ -145,20 +146,25 @@ python3 -m venv /tmp/alfworld-venv
 /tmp/alfworld-venv/bin/pip install alfworld
 /tmp/alfworld-venv/bin/pip install torch --no-deps --index-url https://download.pytorch.org/whl/cpu
 
-# Put official ALFWorld json_2.1.1_json.zip and json_2.1.2_tw-pddl.zip under
-# $DATA_DISK/wormi-data/alfworld-data-zips, unzip them into $ALFWORLD_DATA,
-# then run:
-/tmp/alfworld-venv/bin/python tools/build_alfworld_dataset.py \
+# Optional if you do not already have share/alfworld-initial-2026-05-22:
+/tmp/alfworld-venv/bin/python tools/collect_alfworld_episodes.py \
   --alfworld-data "$ALFWORLD_DATA" \
-  --output-dir "$DATA_DISK/wormi-data/alfworld-room-split"
+  --output-dir "$DATA_DISK/wormi-data/alfworld-source-episodes"
 
-python3 tools/resplit_alfworld_by_task_type.py \
-  --src-root "$DATA_DISK/wormi-data/alfworld-room-split" \
-  --dst-root "$DATA_DISK/wormi-data/alfworld"
+python3 tools/build_alfworld_dataset.py \
+  --source-root "share/alfworld-initial-2026-05-22" \
+  --tw-pddl-zip "$DATA_DISK/wormi-data/alfworld-data/json_2.1.2_tw-pddl.zip" \
+  --output-root "$DATA_DISK/wormi-data/alfworld-protocols"
+
+uv run python tools/validate_alfworld_dataset.py \
+  "$DATA_DISK/wormi-data/alfworld-protocols/paper-compatible-v1" \
+  --check-loader
 ```
 
-Use `tools/REPRODUCE_DATA.md` for the exact download commands, smoke tests, and
-known ALFWorld textual-env issues.
+The generated protocols are documented in
+`reports/alfworld-data-processing-protocols-2026-05-27.md`. Legacy split/resplit scripts were moved to
+`backups/alfworld-legacy-scripts-20260527/` for old task-type experiments. The
+protocol builder is the preferred ALFWorld data path.
 
 ## Train VirtualHome
 

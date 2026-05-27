@@ -1,0 +1,218 @@
+{
+  "data_root": "/root/autodl-tmp/wormi-data/virtualhome",
+  "dataset_mode": "paper_like",
+  "manifest": "/root/autodl-tmp/wormi-data/virtualhome/virtualhome_manifest.json",
+  "errors": [],
+  "warnings": [
+    "actions with unchanged observation: {'walk': {'unchanged': 1806, 'total': 5752}}"
+  ],
+  "file_stats": {
+    "test_seen_task_seen_scene.jsonl": {
+      "rows": 236,
+      "trajectories": 32
+    },
+    "test_seen_task_unseen_scene.jsonl": {
+      "rows": 1652,
+      "trajectories": 212
+    },
+    "test_unseen_task_seen_scene.jsonl": {
+      "rows": 2574,
+      "trajectories": 333
+    },
+    "test_unseen_task_unseen_scene.jsonl": {
+      "rows": 2943,
+      "trajectories": 385
+    },
+    "scene_0/train.jsonl": {
+      "rows": 79,
+      "trajectories": 10
+    },
+    "scene_1/train.jsonl": {
+      "rows": 79,
+      "trajectories": 10
+    },
+    "scene_2/train.jsonl": {
+      "rows": 73,
+      "trajectories": 10
+    },
+    "scene_3/train.jsonl": {
+      "rows": 73,
+      "trajectories": 10
+    },
+    "scene_4/train.jsonl": {
+      "rows": 82,
+      "trajectories": 11
+    },
+    "scene_5/train.jsonl": {
+      "rows": 77,
+      "trajectories": 10
+    }
+  },
+  "total_rows": 7868,
+  "trajectories": 1023,
+  "train_test_overlap": 0,
+  "leakage": {
+    "trajectory_id_overlap": 0,
+    "exact_row_overlap": 0,
+    "exact_action_sequence_overlap": 40,
+    "same_task_exact_action_sequence_overlap": 40
+  },
+  "family_row_counts": {
+    "open": 336,
+    "placein": 3775,
+    "puton": 3469,
+    "turnon": 288
+  },
+  "action_counts": {
+    "grab": 867,
+    "open": 310,
+    "put": 429,
+    "putin": 438,
+    "switchon": 72,
+    "walk": 5752
+  },
+  "trajectory_lengths": {
+    "4": 156,
+    "8": 607,
+    "9": 215,
+    "10": 42,
+    "11": 3
+  },
+  "trajectory_length_stats": {
+    "mean": 7.691104594330401,
+    "median": 8,
+    "min": 4,
+    "max": 11,
+    "p10": 4,
+    "p90": 9
+  },
+  "split_episode_counts": {
+    "seen_seen": 93,
+    "seen_unseen": 212,
+    "unseen_seen": 333,
+    "unseen_unseen": 385
+  },
+  "split_avg_lengths": {
+    "seen_seen": 7.516129032258065,
+    "seen_unseen": 7.7924528301886795,
+    "unseen_seen": 7.72972972972973,
+    "unseen_unseen": 7.644155844155844
+  },
+  "seen_tasks": 16,
+  "unseen_tasks": 62,
+  "expected_seen_tasks": 16,
+  "expected_unseen_tasks": 62,
+  "missing_seen_tasks": [],
+  "missing_unseen_tasks": [],
+  "missing_all_tasks": [],
+  "extra_seen_tasks": [],
+  "extra_unseen_tasks": [],
+  "scenes_present": [
+    "TrimmedTestScene1_graph__v0",
+    "TrimmedTestScene1_graph__v1",
+    "TrimmedTestScene1_graph__v2",
+    "TrimmedTestScene2_graph__v0",
+    "TrimmedTestScene2_graph__v1",
+    "TrimmedTestScene2_graph__v2",
+    "TrimmedTestScene3_graph__v0",
+    "TrimmedTestScene3_graph__v1",
+    "TrimmedTestScene3_graph__v2",
+    "TrimmedTestScene4_graph__v0",
+    "TrimmedTestScene4_graph__v1",
+    "TrimmedTestScene4_graph__v2",
+    "TrimmedTestScene5_graph__v0",
+    "TrimmedTestScene5_graph__v1",
+    "TrimmedTestScene5_graph__v2",
+    "TrimmedTestScene6_graph__v0",
+    "TrimmedTestScene6_graph__v1",
+    "TrimmedTestScene6_graph__v2",
+    "TrimmedTestScene7_graph__v0",
+    "TrimmedTestScene7_graph__v1"
+  ],
+  "paper_seen_scene_keys": [
+    "TrimmedTestScene1_graph__v0",
+    "TrimmedTestScene2_graph__v0",
+    "TrimmedTestScene3_graph__v0",
+    "TrimmedTestScene4_graph__v0",
+    "TrimmedTestScene5_graph__v0",
+    "TrimmedTestScene6_graph__v1"
+  ],
+  "goal_visibility": {
+    "open": {
+      "visible": 84
+    },
+    "placein": {
+      "visible": 438
+    },
+    "puton": {
+      "visible": 429
+    },
+    "turnon": {
+      "visible": 72
+    }
+  },
+  "unchanged_observations_by_action": {
+    "walk": {
+      "unchanged": 1806,
+      "total": 5752
+    }
+  },
+  "replay": {
+    "failures": 0,
+    "obs_mismatches": 0,
+    "next_obs_mismatches": 0,
+    "goal_failures": 0
+  },
+  "loader": {
+    "test_seen_task_seen_scene.jsonl": {
+      "raw_rows": 236,
+      "action_samples": 236,
+      "world_samples": 472
+    },
+    "test_seen_task_unseen_scene.jsonl": {
+      "raw_rows": 1652,
+      "action_samples": 1652,
+      "world_samples": 3304
+    },
+    "test_unseen_task_seen_scene.jsonl": {
+      "raw_rows": 2574,
+      "action_samples": 2574,
+      "world_samples": 5148
+    },
+    "test_unseen_task_unseen_scene.jsonl": {
+      "raw_rows": 2943,
+      "action_samples": 2943,
+      "world_samples": 5886
+    },
+    "scene_0/train.jsonl": {
+      "raw_rows": 79,
+      "action_samples": 79,
+      "world_samples": 158
+    },
+    "scene_1/train.jsonl": {
+      "raw_rows": 79,
+      "action_samples": 79,
+      "world_samples": 158
+    },
+    "scene_2/train.jsonl": {
+      "raw_rows": 73,
+      "action_samples": 73,
+      "world_samples": 146
+    },
+    "scene_3/train.jsonl": {
+      "raw_rows": 73,
+      "action_samples": 73,
+      "world_samples": 146
+    },
+    "scene_4/train.jsonl": {
+      "raw_rows": 82,
+      "action_samples": 82,
+      "world_samples": 164
+    },
+    "scene_5/train.jsonl": {
+      "raw_rows": 77,
+      "action_samples": 77,
+      "world_samples": 154
+    }
+  }
+}

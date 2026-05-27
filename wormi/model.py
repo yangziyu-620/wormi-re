@@ -2,6 +2,7 @@ import os
 from collections import OrderedDict
 from copy import deepcopy
 from enum import Enum
+from threading import RLock
 from typing import Callable, Iterable, TypeVar, cast
 
 import torch
@@ -148,6 +149,10 @@ class WorMI(PreTrainedModel, GenerationMixin):
     def has_model_been_built(self):
         return self.__has_model_been_built
 
+    @property
+    def state_lock(self):
+        return self.__state_lock
+
     def __init__(self, config: WorMIConfig):
         if config.base_model_config is None:
             config.base_model_config = AutoConfig.from_pretrained(
@@ -156,6 +161,7 @@ class WorMI(PreTrainedModel, GenerationMixin):
 
         super().__init__(config)  # pylint: disable=too-many-function-args
         self.config = config
+        self.__state_lock = RLock()
         try:
             self.method = WorMIIntegrateMethod(config.method)
         except ValueError:
@@ -375,7 +381,6 @@ class WorMI(PreTrainedModel, GenerationMixin):
             self.implant(world_model, connections)
 
     def remove_all(self):
-        del self.__world_models
         self.__world_models = OrderedDict[int, PreTrainedModel]()
         self.__world_model_next_key = 0
         for hooks in self.extract_hidden_state_hooks.values():
@@ -460,59 +465,60 @@ class WorMI(PreTrainedModel, GenerationMixin):
         cache_position: torch.LongTensor | None = None,
         **model_kwargs,
     ) -> CausalLMOutputWithPast:
-        if isinstance(past_key_values, Cache):
-            pkv = past_key_values.past_key_values
-        else:
-            pkv = past_key_values
+        with self.__state_lock:
+            if isinstance(past_key_values, Cache):
+                pkv = past_key_values.past_key_values
+            else:
+                pkv = past_key_values
 
-        if pkv is not None:
-            base_past_key_values = pkv[: self.__num_base_layers]
-            world_past_key_values = pkv[self.__num_base_layers :]
-        else:
-            base_past_key_values = None
-            world_past_key_values = None
+            if pkv is not None:
+                base_past_key_values = pkv[: self.__num_base_layers]
+                world_past_key_values = pkv[self.__num_base_layers :]
+            else:
+                base_past_key_values = None
+                world_past_key_values = None
 
-        world_output = self._forward_world_mode(
-            input_ids=input_ids,
-            attention_mask=attention_mask,
-            position_ids=position_ids,
-            past_key_values=world_past_key_values,
-            inputs_embeds=inputs_embeds,
-            labels=labels,
-            use_cache=use_cache,
-            output_attentions=output_attentions,
-            output_hidden_states=output_hidden_states,
-            return_dict=return_dict,
-            cache_position=cache_position,
-        )
-        world_past_key_values = deepcopy(world_output.past_key_values)
-        del world_output
+            world_output = self._forward_world_mode(
+                input_ids=input_ids,
+                attention_mask=attention_mask,
+                position_ids=position_ids,
+                past_key_values=world_past_key_values,
+                inputs_embeds=inputs_embeds,
+                labels=labels,
+                use_cache=use_cache,
+                output_attentions=output_attentions,
+                output_hidden_states=output_hidden_states,
+                return_dict=return_dict,
+                cache_position=cache_position,
+            )
+            world_past_key_values = deepcopy(world_output.past_key_values)
+            del world_output
 
-        output = self.__base_model(
-            input_ids=input_ids,
-            attention_mask=attention_mask,
-            position_ids=position_ids,
-            past_key_values=base_past_key_values,
-            inputs_embeds=inputs_embeds,
-            labels=labels,
-            use_cache=use_cache,
-            output_attentions=output_attentions,
-            output_hidden_states=output_hidden_states,
-            return_dict=return_dict,
-            cache_position=cache_position,
-            **model_kwargs,
-        )
+            output = self.__base_model(
+                input_ids=input_ids,
+                attention_mask=attention_mask,
+                position_ids=position_ids,
+                past_key_values=base_past_key_values,
+                inputs_embeds=inputs_embeds,
+                labels=labels,
+                use_cache=use_cache,
+                output_attentions=output_attentions,
+                output_hidden_states=output_hidden_states,
+                return_dict=return_dict,
+                cache_position=cache_position,
+                **model_kwargs,
+            )
 
-        if return_dict:
-            if (
-                output.past_key_values is not None
-                and world_past_key_values is not None
-            ):
-                output.past_key_values = (
-                    *output.past_key_values,
-                    *world_past_key_values,
-                )
-        return output
+            if return_dict:
+                if (
+                    output.past_key_values is not None
+                    and world_past_key_values is not None
+                ):
+                    output.past_key_values = (
+                        *output.past_key_values,
+                        *world_past_key_values,
+                    )
+            return output
 
     def save_pretrained(
         self,

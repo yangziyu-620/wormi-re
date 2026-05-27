@@ -17,7 +17,7 @@ are retrieved for unseen-task queries (Algorithm 1 line 28).
 The 1 unseen room (bathrooms) is held out for Table 1 col 2/col 3 evals,
 no per-room world model.
 
-Data prepared by `tools/resplit_alfworld_by_task_type.py`.
+Legacy task-type data was prepared by `backups/alfworld-legacy-scripts-20260527/resplit_alfworld_by_task_type.py`; new protocol data is prepared by `tools/build_alfworld_dataset.py`.
 
 Used by `sh/wormi-train-alfworld-world.sh` for unattended PBS training.
 
