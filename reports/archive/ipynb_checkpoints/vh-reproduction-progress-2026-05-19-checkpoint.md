@@ -512,7 +512,7 @@ Current conclusion:
 Added a reusable validator:
 
 - script: `tools/validate_virtualhome_dataset.py`
-- latest JSON report: `reports/vh-data-validation-fixedtraj-2026-05-19.json`
+- latest JSON report: `reports/virtualhome/validation/vh-data-validation-fixedtraj-2026-05-19.json`
 - validated data root: `/root/autodl-tmp/wormi-data/virtualhome`
 
 Scope of validation:
@@ -686,7 +686,7 @@ Validated intermediate semantic full build:
 
 - scene cache: `/root/autodl-tmp/wormi-data/scene-inits/init_graphs_20_semantic.json`
 - data root: `/root/autodl-tmp/wormi-data/virtualhome-semantic-cache-check`
-- report: `reports/vh-data-validation-semantic-cache-check-2026-05-19.json`
+- report: `reports/virtualhome/validation/vh-data-validation-semantic-cache-check-2026-05-19.json`
 - result:
   - 1,225 trajectories;
   - 78 actual tasks;
@@ -700,7 +700,7 @@ Validated intermediate semantic full build:
 Validated paper-count semantic build:
 
 - data root: `/root/autodl-tmp/wormi-data/virtualhome-semantic-1023-check`
-- report: `reports/vh-data-validation-semantic-1023-check-2026-05-19.json`
+- report: `reports/virtualhome/validation/vh-data-validation-semantic-1023-check-2026-05-19.json`
 - result:
   - 4,172 rows;
   - 1,023 trajectories;
@@ -739,7 +739,7 @@ Next action:
 - Current main data:
   - `/root/autodl-tmp/wormi-data/virtualhome`
 - Main validation report:
-  - `reports/vh-data-validation-main-semantic-1023-2026-05-19.json`
+  - `reports/virtualhome/validation/vh-data-validation-main-semantic-1023-2026-05-19.json`
 - Main validation result:
   - 4,172 rows;
   - 1,023 trajectories;
@@ -880,7 +880,7 @@ New split counts:
 
 Validation:
 
-- Report: `reports/vh-data-validation-taskaware-split-2026-05-20.json`
+- Report: `reports/virtualhome/validation/vh-data-validation-taskaware-split-2026-05-20.json`
 - Rows: 4,172
 - Trajectories: 1,023
 - Train/test overlap: 0

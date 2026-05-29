@@ -32,6 +32,14 @@ if str(_REPO_ROOT) not in sys.path:
     sys.path.insert(0, str(_REPO_ROOT))
 
 from tools.build_virtualhome_dataset import _bootstrap_evolving_graph, format_observation
+from tools.compact_virtualhome_observations import (
+    DEFAULT_NUM_EDGES,
+    _format_triples,
+    compact_observation,
+    format_instance_grounded_observation,
+    select_task_instances,
+    selected_instance_ids_from_selection,
+)
 from wormi.curricula import load_wormi_curricula
 from wormi.datasets.virtualhome import BASE_PROMPT as VIRTUALHOME_BASE_PROMPT
 from wormi.model import WorMI, WorMIConfig
@@ -94,6 +102,16 @@ class VirtualHomeRolloutArgs:
         default=1.0, metadata={"help": "Generation temperature. <=0 disables sampling."}
     )
     top_p: float = field(default=1.0, metadata={"help": "Nucleus sampling p."})
+    observation_format: str = field(
+        default="auto",
+        metadata={
+            "help": "Observation renderer for rollout: auto, full, or tmow_compact."
+        },
+    )
+    compact_num_edges: int = field(
+        default=DEFAULT_NUM_EDGES,
+        metadata={"help": "Fallback edge budget for tmow_compact rollout observations."},
+    )
 
 
 @dataclass
@@ -131,6 +149,68 @@ def _decode_action(tokenizer, outputs) -> str:
     if "<|eot_id|>" in pred:
         pred = pred.split("<|eot_id|>", 1)[0]
     return pred.strip().splitlines()[0].strip()
+
+
+def _resolve_observation_format(first: dict[str, Any], args: VirtualHomeRolloutArgs) -> str:
+    requested = args.observation_format.lower().strip()
+    if requested not in {"auto", "full", "tmow_compact"}:
+        raise ValueError(
+            "observation_format must be one of: auto, full, tmow_compact"
+        )
+    if requested != "auto":
+        return requested
+
+    prep = (first.get("_meta") or {}).get("observation_preprocessing") or {}
+    mode = str(prep.get("mode", "")).lower()
+    if mode.startswith("tmow_compact"):
+        return "tmow_compact"
+    return "full"
+
+
+def _rollout_task_args(first: dict[str, Any]) -> list[str]:
+    meta = first.get("_meta") or {}
+    args = meta.get("task_args")
+    if isinstance(args, list) and args:
+        return [str(arg).replace(" ", "_").lower() for arg in args]
+    return []
+
+
+def _render_rollout_observation(
+    graph: dict[str, Any],
+    first: dict[str, Any],
+    args: VirtualHomeRolloutArgs,
+    selected_node_ids: list[int] | None = None,
+) -> tuple[str, str]:
+    mode = _resolve_observation_format(first, args)
+    full = format_observation(graph)
+    if mode == "full":
+        return full, mode
+
+    meta = first.get("_meta") or {}
+    prep = meta.get("observation_preprocessing") or {}
+    num_edges = int(prep.get("num_edges") or args.compact_num_edges)
+    task_args = _rollout_task_args(first)
+    source_observation = full
+    if prep.get("instance_grounded", False):
+        if selected_node_ids is None:
+            selection = select_task_instances(
+                graph, _infer_goal(first)["family"], task_args
+            )
+            selected_node_ids = selected_instance_ids_from_selection(selection)
+        source_observation = format_instance_grounded_observation(
+            graph,
+            task_args=task_args,
+            selected_node_ids=[int(node_id) for node_id in selected_node_ids],
+        )
+    triples = compact_observation(
+        source_observation,
+        instruction=str(first.get("instruction", "")),
+        action="",
+        task_args=task_args,
+        num_edges=num_edges,
+        fill_to_num_edges=bool(prep.get("fill_to_num_edges", True)),
+    )
+    return _format_triples(triples), mode
 
 
 def _render_prompt(tokenizer, instruction: str, observation: str) -> str:
@@ -230,6 +310,116 @@ def _find_first_id(graph: dict[str, Any], class_name: str) -> int | None:
     return None
 
 
+def _nodes_by_id(graph: dict[str, Any]) -> dict[int, dict[str, Any]]:
+    return {int(node["id"]): node for node in graph["nodes"]}
+
+
+def _node_ids_by_class(graph: dict[str, Any], class_name: str) -> list[int]:
+    return [int(node["id"]) for node in graph["nodes"] if node["class_name"] == class_name]
+
+
+def _character_ids(graph: dict[str, Any]) -> set[int]:
+    return {
+        int(node["id"])
+        for node in graph["nodes"]
+        if node.get("class_name") == "character"
+    }
+
+
+def _character_room_ids(graph: dict[str, Any]) -> set[int]:
+    nodes = _nodes_by_id(graph)
+    chars = _character_ids(graph)
+    rooms = set()
+    for edge in graph["edges"]:
+        if (
+            int(edge["from_id"]) in chars
+            and edge["relation_type"] == "INSIDE"
+            and nodes.get(int(edge["to_id"]), {}).get("category") == "Rooms"
+        ):
+            rooms.add(int(edge["to_id"]))
+    return rooms
+
+
+def _node_room_ids(graph: dict[str, Any], node_id: int) -> set[int]:
+    nodes = _nodes_by_id(graph)
+    rooms = set()
+    for edge in graph["edges"]:
+        if (
+            int(edge["from_id"]) == node_id
+            and edge["relation_type"] == "INSIDE"
+            and nodes.get(int(edge["to_id"]), {}).get("category") == "Rooms"
+        ):
+            rooms.add(int(edge["to_id"]))
+    return rooms
+
+
+def _character_close_ids(graph: dict[str, Any]) -> set[int]:
+    chars = _character_ids(graph)
+    close = set()
+    for edge in graph["edges"]:
+        if int(edge["from_id"]) in chars and edge["relation_type"] == "CLOSE":
+            close.add(int(edge["to_id"]))
+    return close
+
+
+def _held_object_info(graph: dict[str, Any]) -> tuple[str, int] | None:
+    nodes = _nodes_by_id(graph)
+    chars = _character_ids(graph)
+    for edge in graph["edges"]:
+        if (
+            int(edge["from_id"]) in chars
+            and edge["relation_type"] in {"HOLDS_RH", "HOLDS_LH"}
+        ):
+            held_id = int(edge["to_id"])
+            held = nodes.get(held_id)
+            if held is not None:
+                return held["class_name"], held_id
+    return None
+
+
+def _choose_node_id(
+    graph: dict[str, Any],
+    class_name: str,
+    *,
+    verb: str,
+    goal: dict[str, Any] | None = None,
+) -> int | None:
+    ids = _node_ids_by_class(graph, class_name)
+    if not ids:
+        return None
+    if len(ids) == 1:
+        return ids[0]
+
+    nodes = _nodes_by_id(graph)
+    if nodes.get(ids[0], {}).get("category") == "Rooms":
+        return ids[0]
+
+    close_ids = _character_close_ids(graph)
+    char_rooms = _character_room_ids(graph)
+    held = _held_object_info(graph)
+    goal_args = [str(arg) for arg in (goal or {}).get("args", [])]
+    source_cls = goal_args[0] if goal_args else None
+    target_cls = goal_args[1] if len(goal_args) > 1 else None
+
+    def score(node_id: int) -> tuple[int, int]:
+        value = 0
+        if node_id in close_ids:
+            value += 100
+        if _node_room_ids(graph, node_id) & char_rooms:
+            value += 60
+        if held is not None and node_id == held[1]:
+            value += 120
+        if class_name == source_cls and held is None:
+            value += 20
+        if class_name == target_cls and held is not None:
+            value += 40
+        if verb in {"grab", "open", "switchon"} and node_id in close_ids:
+            value += 40
+        return value, -node_id
+
+    return max(ids, key=score)
+
+
 def _class_category(graph: dict[str, Any], class_name: str) -> str | None:
     for node in graph["nodes"]:
         if node["class_name"] == class_name:
@@ -306,19 +496,8 @@ def _match_pair(graph: dict[str, Any], phrase: str) -> tuple[str, str] | None:
 
 
 def _held_object(graph: dict[str, Any]) -> str | None:
-    nodes = {int(n["id"]): n for n in graph["nodes"]}
-    character_ids = {
-        nid for nid, node in nodes.items() if node.get("class_name") == "character"
-    }
-    for edge in graph["edges"]:
-        if (
-            int(edge["from_id"]) in character_ids
-            and edge["relation_type"] in {"HOLDS_RH", "HOLDS_LH"}
-        ):
-            held = nodes.get(int(edge["to_id"]))
-            if held is not None:
-                return held["class_name"]
-    return None
+    held = _held_object_info(graph)
+    return held[0] if held is not None else None
 
 
 def _parse_action(text: str) -> ParsedAction | None:
@@ -358,7 +537,7 @@ def _parse_action(text: str) -> ParsedAction | None:
 
 
 def _script_line_from_prediction(
-    graph: dict[str, Any], prediction: str
+    graph: dict[str, Any], prediction: str, goal: dict[str, Any] | None = None
 ) -> tuple[str | None, str | None]:
     parsed = _parse_action(prediction)
     if parsed is None:
@@ -372,7 +551,7 @@ def _script_line_from_prediction(
             return None, f"object not found: {raw_arg!r}"
         if _class_category(graph, cls) == "Characters":
             return None, f"invalid target: {cls}"
-        node_id = _find_first_id(graph, cls)
+        node_id = _choose_node_id(graph, cls, verb=verb, goal=goal)
         if node_id is None:
             return None, f"object id not found: {cls}"
         action = {
@@ -398,8 +577,12 @@ def _script_line_from_prediction(
             or _class_category(graph, target) == "Characters"
         ):
             return None, f"invalid put target: {source}, {target}"
-        source_id = _find_first_id(graph, source)
-        target_id = _find_first_id(graph, target)
+        held = _held_object_info(graph)
+        if held is not None and held[0] == source:
+            source_id = held[1]
+        else:
+            source_id = _choose_node_id(graph, source, verb=verb, goal=goal)
+        target_id = _choose_node_id(graph, target, verb=verb, goal=goal)
         if source_id is None or target_id is None:
             return None, f"put ids not found: {source}, {target}"
         action = "PUTIN" if verb == "putin" else "PUTBACK"
@@ -505,12 +688,17 @@ def _eval_episode(
     steps_taken = 0
     final_graph = state.to_dict()
 
+    selection = select_task_instances(scene_inits[scene], goal["family"], goal["args"])
+    selected_node_ids = selected_instance_ids_from_selection(selection)
+
     if _goal_satisfied(final_graph, goal):
         return RolloutResult(True, 0, 0, 0, goal)
 
     for step_idx in range(args.max_steps):
         graph = state.to_dict()
-        observation = format_observation(graph)
+        observation, observation_format = _render_rollout_observation(
+            graph, first, args, selected_node_ids
+        )
         prediction = _generate_action(
             model,
             tokenizer,
@@ -520,7 +708,7 @@ def _eval_episode(
             args.temperature,
             args.top_p,
         )
-        script_line, parse_error = _script_line_from_prediction(graph, prediction)
+        script_line, parse_error = _script_line_from_prediction(graph, prediction, goal)
         executed = False
         execution_error = None
         if script_line is None:
@@ -557,6 +745,7 @@ def _eval_episode(
                     "execution_error": execution_error,
                     "success_after_step": success,
                     "retrieved_world_models": retrieved_world_models,
+                    "observation_format": observation_format,
                 },
                 ensure_ascii=False,
             )
@@ -674,6 +863,8 @@ def main(argv):
 
         detail_path = out_dir / f"vh-rollout-{name}.jsonl"
         episode_path = out_dir / f"vh-rollout-{name}-episodes.jsonl"
+        first_row = episodes[0][0]
+        observation_format = _resolve_observation_format(first_row, args)
         results: list[RolloutResult] = []
         with detail_path.open("w") as detail_file, episode_path.open("w") as episode_file:
             with tqdm(episodes, total=len(episodes), desc=f"VH rollout {name}") as pbar:
@@ -710,6 +901,7 @@ def main(argv):
                                 "executed_actions": result.executed_actions,
                                 "goal": result.goal,
                                 "retrieved_world_models": selected_idx,
+                                "observation_format": observation_format,
                             },
                             ensure_ascii=False,
                         )
@@ -723,6 +915,7 @@ def main(argv):
             "dataset_type": "virtualhome_rollout",
             "retrieved_world_models": selected_idx,
             "max_steps": args.max_steps,
+            "observation_format": observation_format,
             **metrics,
         }
         summary_rows.append(row)
@@ -739,14 +932,14 @@ def main(argv):
     with tsv_path.open("w") as f:
         f.write(
             "name\tdataset_type\tepisodes\tSR\tPS\tinvalid_actions\t"
-            "executed_actions\tmax_steps\tworld_models\n"
+            "executed_actions\tmax_steps\tobservation_format\tworld_models\n"
         )
         for row in summary_rows:
             f.write(
                 f"{row['name']}\t{row['dataset_type']}\t{row['episodes']}\t"
                 f"{row['success_rate']:.6f}\t{row['path_steps']:.6f}\t"
                 f"{row['invalid_actions']:.6f}\t{row['executed_actions']:.6f}\t"
-                f"{row['max_steps']}\t"
+                f"{row['max_steps']}\t{row['observation_format']}\t"
                 f"{','.join(map(str, row['retrieved_world_models']))}\n"
             )
 

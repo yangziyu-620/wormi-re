@@ -1,0 +1,128 @@
+{
+  "created_at_utc": "2026-05-27T20:05:29.632034+00:00",
+  "data_root": "/root/autodl-tmp/wormi-data/virtualhome-paperlike-tmow-compact-fill17-20260528",
+  "repo_root": "/root/WorMI",
+  "data_files": [
+    {
+      "path": "scene_0/train.jsonl",
+      "bytes": 83530,
+      "sha256": "4cf04351f6b8685f4c485afc60e41ab703519e5c37da20922c38393191000bb3",
+      "rows": 46
+    },
+    {
+      "path": "scene_1/train.jsonl",
+      "bytes": 102483,
+      "sha256": "a0dcb636ff89d0da9f57b4c4ee6ca4b994f8ea227f4e4541f399819b9d53b38d",
+      "rows": 50
+    },
+    {
+      "path": "scene_2/train.jsonl",
+      "bytes": 102425,
+      "sha256": "2bc98476d312c0c70d4f39f188fcb92c3b3ba26dc373144e984b81014142bfe8",
+      "rows": 51
+    },
+    {
+      "path": "scene_3/train.jsonl",
+      "bytes": 86064,
+      "sha256": "7d389bd93aa4924defcf6449abd721e10084cee3a0713bf0efcc96070b1f55ee",
+      "rows": 43
+    },
+    {
+      "path": "scene_4/train.jsonl",
+      "bytes": 122806,
+      "sha256": "0d9d437a048a6e4bb851cc0c82f99e363d57ac05ba1e8688f4d16cc72928853f",
+      "rows": 58
+    },
+    {
+      "path": "scene_5/train.jsonl",
+      "bytes": 119269,
+      "sha256": "af0fbb254233e35afe597df0e0bc0657077071fff10cf603f42aed1bb219b84e",
+      "rows": 56
+    },
+    {
+      "path": "test_seen_task_seen_scene.jsonl",
+      "bytes": 326917,
+      "sha256": "eba109efb06b23911bb65bafd39597929153245cb346f4aa2266b36a9ef14dc9",
+      "rows": 161
+    },
+    {
+      "path": "test_seen_task_unseen_scene.jsonl",
+      "bytes": 2373965,
+      "sha256": "c5a3b87d5e9b03fc300613e617d5b0ab25de5cb014f27230fdf3e2f73bfb853c",
+      "rows": 1147
+    },
+    {
+      "path": "test_unseen_task_seen_scene.jsonl",
+      "bytes": 3656785,
+      "sha256": "bf0ba8f289fed5aa676b89f712a83c592441b4f9b9647873e33beb15465be96e",
+      "rows": 1779
+    },
+    {
+      "path": "test_unseen_task_unseen_scene.jsonl",
+      "bytes": 4256480,
+      "sha256": "40c472eb88c119aa518d9caee54ee4394af762ed8b697380a8e4f568aefc79d8",
+      "rows": 2060
+    }
+  ],
+  "metadata_files": [
+    {
+      "path": "virtualhome_manifest.json",
+      "bytes": 472728,
+      "sha256": "3b4760c9b0d71b7e3fd080e001ac8d364dc105ca01d3d105639d5f78a163dabf"
+    },
+    {
+      "path": "tmow_compact_summary.json",
+      "bytes": 914,
+      "sha256": "f1b1458da25bdfd3a9f8c5a2e8b4f5edfa24180f316dbb8216531aac5759c30d"
+    }
+  ],
+  "source_files": [
+    {
+      "path": "tools/build_virtualhome_dataset_tmow_compact.py",
+      "bytes": 25163,
+      "sha256": "6b861eb8a22fcc5f3fee608cef1f2e6d21a3c730cbd1eb66aa256cbdb122a611"
+    },
+    {
+      "path": "tools/compact_virtualhome_observations.py",
+      "bytes": 16599,
+      "sha256": "4a15e50f99ec1a2e957b510825a3aa6cb947bbe81f3ca3008d1cdc47f84f52a3"
+    },
+    {
+      "path": "tools/validate_virtualhome_dataset.py",
+      "bytes": 40089,
+      "sha256": "d884a3df6bae7d5ec9e08ef6f75b57b63de79b39a209f85343eb54d330aaa911"
+    },
+    {
+      "path": "tools/audit_tmow_compact_alignment.py",
+      "bytes": 6866,
+      "sha256": "eb445777ea7eb3511c7da826603ed759f7d1c7199c177461efa7bff8f5dc5d4c"
+    },
+    {
+      "path": "sh/wormi-build-vh-data-tmow-compact.sh",
+      "bytes": 4539,
+      "sha256": "85932e07a917b5f3ad55f7d49ab29b2ee97b9656582070281ef956ecf9b8b746"
+    },
+    {
+      "path": "sh/wormi-vh-paperlike-tmow-compact-full.sh",
+      "bytes": 5342,
+      "sha256": "d2865818847d5a1d560a6c2a1c858ffad492ac71626b9c53f8b0acc20adee155"
+    },
+    {
+      "path": "reports/virtualhome/validation/vh-paperlike-tmow-compact-fill17-validation-2026-05-28.json",
+      "bytes": 5631,
+      "sha256": "540c74d25d7b2e03ba605933c5e5aa13618904bd6a4450384eba286b1a5b169f"
+    },
+    {
+      "path": "reports/virtualhome/validation/vh-paperlike-tmow-compact-alignment-audit-2026-05-28.json",
+      "bytes": 2760,
+      "sha256": "24052253ced9ca339e6be41fd3c377a2e52b9f8d071e1d07de65300256ecf420"
+    }
+  ],
+  "totals": {
+    "jsonl_files": 10,
+    "jsonl_rows": 5451,
+    "jsonl_bytes": 11230724,
+    "metadata_files": 2,
+    "source_files": 8
+  }
+}

@@ -1,0 +1,105 @@
+{
+  "data_root": "/root/autodl-tmp/wormi-data/virtualhome-paperlike-tmow-compact-fill17-20260528",
+  "validation_json": "reports/virtualhome/validation/vh-paperlike-tmow-compact-fill17-validation-2026-05-28.json",
+  "files": [
+    "scene_0/train.jsonl",
+    "scene_1/train.jsonl",
+    "scene_2/train.jsonl",
+    "scene_3/train.jsonl",
+    "scene_4/train.jsonl",
+    "scene_5/train.jsonl",
+    "test_seen_task_seen_scene.jsonl",
+    "test_seen_task_unseen_scene.jsonl",
+    "test_unseen_task_seen_scene.jsonl",
+    "test_unseen_task_unseen_scene.jsonl"
+  ],
+  "rows": 5451,
+  "mode_counts": {
+    "tmow_compact_from_graph_state": 5451
+  },
+  "source_counts": {
+    "virtualhome_evolving_graph": 5451
+  },
+  "next_mode_counts": {
+    "delta": 5451
+  },
+  "fill_to_num_edges_counts": {
+    "True": 5451
+  },
+  "source_observation_triples": {
+    "mean": 269.45294441386903,
+    "min": 192,
+    "p50": 289,
+    "p90": 306,
+    "max": 315
+  },
+  "compact_observation_triples": {
+    "mean": 37.5432030820033,
+    "min": 21,
+    "p50": 31,
+    "p90": 65,
+    "max": 95
+  },
+  "source_next_observation_triples": {
+    "mean": 270.17317923316824,
+    "min": 192,
+    "p50": 290,
+    "p90": 306,
+    "max": 316
+  },
+  "compact_next_observation_triples": {
+    "mean": 1.2373876352962758,
+    "min": 1,
+    "p50": 1,
+    "p90": 2,
+    "max": 3
+  },
+  "missing_task_args_in_observation": 0,
+  "missing_action_args_in_observation": 0,
+  "no_updates_targets": 0,
+  "malformed_preprocessing_rows": 0,
+  "validation_summary": {
+    "errors": 0,
+    "warnings": 0,
+    "replay": {
+      "failures": 0,
+      "obs_mismatches": 0,
+      "next_obs_mismatches": 0,
+      "goal_failures": 0
+    },
+    "leakage": {
+      "trajectory_id_overlap": 0,
+      "exact_row_overlap": 0,
+      "exact_action_sequence_overlap": 42,
+      "same_task_exact_action_sequence_overlap": 42
+    },
+    "chat_template": {
+      "tokenizer": "unsloth/Llama-3.2-3B-Instruct",
+      "tokenizer_local_files_only": true,
+      "response_template": "<|start_header_id|>assistant<|end_header_id|>",
+      "action_samples": 5451,
+      "world_samples": 16353,
+      "max_action_tokens": 947,
+      "max_world_tokens": 967,
+      "loss_mask_samples": 21804,
+      "min_supervised_tokens": 4,
+      "max_supervised_tokens": 24,
+      "bad_count": 0,
+      "bad_examples": []
+    }
+  },
+  "verdicts": {
+    "independent_graph_state_builder": true,
+    "tmow_num_edges_fill17": true,
+    "delta_next_observation": true,
+    "task_args_visible": true,
+    "action_args_visible": true,
+    "no_no_updates_targets": true,
+    "validation_errors_zero": true,
+    "validation_warnings_zero": true,
+    "replay_clean": true,
+    "chat_template_clean": true,
+    "train_test_row_overlap_zero": true,
+    "trajectory_overlap_zero": true
+  }
+}

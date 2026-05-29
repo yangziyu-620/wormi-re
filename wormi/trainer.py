@@ -929,7 +929,21 @@ class WorMIMetaLearningTrainer(WorMITrainer):
 
     @override
     def train(self, **options):
-        if os.environ.get("WORMI_SEQUENTIAL_META_LEARNING", "0") == "1":
+        requested_sequential = (
+            os.environ.get("WORMI_SEQUENTIAL_META_LEARNING", "1") == "1"
+        )
+        allow_threaded_meta = (
+            os.environ.get("WORMI_ALLOW_UNSAFE_THREADED_META", "0") == "1"
+        )
+        if requested_sequential or not allow_threaded_meta:
+            if not requested_sequential:
+                print(
+                    "WORMI_SEQUENTIAL_META_LEARNING=0 was requested, but "
+                    "threaded meta-learning is disabled because it does not "
+                    "match the Reptile step/beta semantics. Set "
+                    "WORMI_ALLOW_UNSAFE_THREADED_META=1 to use it.",
+                    flush=True,
+                )
             self._train_sequential_reptile(**options)
             return
 

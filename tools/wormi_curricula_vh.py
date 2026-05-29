@@ -54,9 +54,18 @@ WORLD_CONNECTIONS = [7, 15]
 SCENES = [f"scene_{i}" for i in range(6)]
 
 # Inner-loop trainer config. Paper Table A.6: λ_I=30 inner steps, α=1e-5.
+#
+# eval_steps default is intentionally larger than the inner-loop max_steps so
+# that NO mid-training eval fires inside an inner loop. Previously eval_steps=30
+# == max_steps=30 triggered a full eval (≈11 min on the seen-seen set) after
+# every single inner loop; across 6 trainers × λ_M=8 that was ~40 evals = ~7h,
+# i.e. 90% of stage-2 wall-clock was eval, not training. Final model quality is
+# measured by the dedicated rollout / table1 evaluators, not by these inner
+# evals, so they add cost without value. Override with
+# WORMI_VH_STAGE2_EVAL_STEPS=30 to restore the old per-inner-loop eval.
 trainer_args = WorMITrainerConfig(
     max_steps=int(os.environ.get("WORMI_VH_STAGE2_INNER_STEPS", "30")),
-    eval_steps=30,
+    eval_steps=int(os.environ.get("WORMI_VH_STAGE2_EVAL_STEPS", "100000")),
     save_steps=240,
     logging_steps=5,
     batch_size=int(os.environ.get("WORMI_VH_STAGE2_BATCH_SIZE", "4")),
@@ -104,7 +113,9 @@ curricula = WorMICurricula(
     num_heads=8,
     self_attention=False,
     meta_learning=True,
-    meta_learning_rate=0.1,  # β in paper Algorithm 1 / Table A.6
+    meta_learning_rate=float(
+        os.environ.get("WORMI_VH_STAGE2_META_LR", "0.1")
+    ),  # β in paper Algorithm 1 / Table A.6 (override to test adapter starvation)
     num_iterations=int(os.environ.get("WORMI_VH_STAGE2_META_STEPS", "8")),   # λ_M
     world_models=[
         WorldModel(
@@ -120,6 +131,13 @@ curricula = WorMICurricula(
             target_world_models=list(subset),
             datasets=list(subset),
             trainer_args=trainer_args,
+            # Cap the in-training eval set. Previously unbounded (~1470 BC
+            # samples/subset → ~658s/eval → ~90% of stage-2 wall-clock). The
+            # final quality is measured by table1/rollout, so a tiny eval is
+            # enough to watch loss. 0 disables via taking 0 (kept >0 here).
+            num_eval_samples=int(
+                os.environ.get("WORMI_VH_STAGE2_EVAL_SAMPLES", "16")
+            ),
         )
         for subset in TRAIN_SUBSETS
     ],

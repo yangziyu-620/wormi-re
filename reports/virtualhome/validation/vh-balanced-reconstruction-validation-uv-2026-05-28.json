@@ -1,0 +1,360 @@
+{
+  "data_root": "/root/autodl-tmp/wormi-data/virtualhome-balanced-reconstruction-20260528",
+  "dataset_mode": "paper_compatible_balanced_reconstruction",
+  "manifest": "/root/autodl-tmp/wormi-data/virtualhome-balanced-reconstruction-20260528/virtualhome_manifest.json",
+  "errors": [],
+  "warnings": [
+    "scene cache entries with no rows: ['TrimmedTestScene3_graph__d08_v04', 'TrimmedTestScene6_graph__d15_v00', 'TrimmedTestScene7_graph__d19_v06']",
+    "effective scenes with rows: 157, expected 20"
+  ],
+  "file_stats": {
+    "test_seen_task_seen_scene.jsonl": {
+      "rows": 494,
+      "trajectories": 96
+    },
+    "test_seen_task_unseen_scene.jsonl": {
+      "rows": 1163,
+      "trajectories": 224
+    },
+    "test_unseen_task_seen_scene.jsonl": {
+      "rows": 0,
+      "trajectories": 0
+    },
+    "test_unseen_task_unseen_scene.jsonl": {
+      "rows": 1697,
+      "trajectories": 319
+    },
+    "scene_0/train.jsonl": {
+      "rows": 311,
+      "trajectories": 64
+    },
+    "scene_1/train.jsonl": {
+      "rows": 308,
+      "trajectories": 64
+    },
+    "scene_2/train.jsonl": {
+      "rows": 327,
+      "trajectories": 64
+    },
+    "scene_3/train.jsonl": {
+      "rows": 309,
+      "trajectories": 64
+    },
+    "scene_4/train.jsonl": {
+      "rows": 349,
+      "trajectories": 64
+    },
+    "scene_5/train.jsonl": {
+      "rows": 328,
+      "trajectories": 64
+    }
+  },
+  "total_rows": 5286,
+  "trajectories": 1023,
+  "train_test_overlap": 0,
+  "leakage": {
+    "trajectory_id_overlap": 0,
+    "exact_row_overlap": 0,
+    "exact_action_sequence_overlap": 77,
+    "same_task_exact_action_sequence_overlap": 77
+  },
+  "family_row_counts": {
+    "open": 206,
+    "placein": 2596,
+    "puton": 2141,
+    "turnon": 343
+  },
+  "action_counts": {
+    "grab": 824,
+    "open": 310,
+    "put": 387,
+    "putin": 437,
+    "switchon": 124,
+    "walk": 3204
+  },
+  "trajectory_lengths": {
+    "2": 48,
+    "3": 151,
+    "4": 65,
+    "5": 270,
+    "6": 325,
+    "7": 140,
+    "8": 19,
+    "9": 5
+  },
+  "trajectory_length_stats": {
+    "mean": 5.167155425219941,
+    "median": 5,
+    "min": 2,
+    "max": 9,
+    "p10": 3,
+    "p90": 7
+  },
+  "split_episode_counts": {
+    "seen_seen": 480,
+    "seen_unseen": 224,
+    "unseen_unseen": 319
+  },
+  "split_avg_lengths": {
+    "seen_seen": 5.054166666666666,
+    "seen_unseen": 5.191964285714286,
+    "unseen_unseen": 5.3197492163009406
+  },
+  "seen_tasks": 16,
+  "unseen_tasks": 62,
+  "expected_seen_tasks": 16,
+  "expected_unseen_tasks": 62,
+  "missing_seen_tasks": [],
+  "missing_unseen_tasks": [],
+  "missing_all_tasks": [],
+  "extra_seen_tasks": [],
+  "extra_unseen_tasks": [],
+  "scenes_present": [
+    "TrimmedTestScene1_graph__d00_v00",
+    "TrimmedTestScene1_graph__d00_v01",
+    "TrimmedTestScene1_graph__d00_v02",
+    "TrimmedTestScene1_graph__d00_v03",
+    "TrimmedTestScene1_graph__d00_v04",
+    "TrimmedTestScene1_graph__d00_v05",
+    "TrimmedTestScene1_graph__d00_v06",
+    "TrimmedTestScene1_graph__d00_v07",
+    "TrimmedTestScene1_graph__d01_v00",
+    "TrimmedTestScene1_graph__d01_v01",
+    "TrimmedTestScene1_graph__d01_v02",
+    "TrimmedTestScene1_graph__d01_v03",
+    "TrimmedTestScene1_graph__d01_v04",
+    "TrimmedTestScene1_graph__d01_v05",
+    "TrimmedTestScene1_graph__d01_v06",
+    "TrimmedTestScene1_graph__d01_v07",
+    "TrimmedTestScene1_graph__d02_v00",
+    "TrimmedTestScene1_graph__d02_v01",
+    "TrimmedTestScene1_graph__d02_v02",
+    "TrimmedTestScene1_graph__d02_v03",
+    "TrimmedTestScene1_graph__d02_v04",
+    "TrimmedTestScene1_graph__d02_v05",
+    "TrimmedTestScene1_graph__d02_v06",
+    "TrimmedTestScene1_graph__d02_v07",
+    "TrimmedTestScene2_graph__d03_v00",
+    "TrimmedTestScene2_graph__d03_v01",
+    "TrimmedTestScene2_graph__d03_v02",
+    "TrimmedTestScene2_graph__d03_v03",
+    "TrimmedTestScene2_graph__d03_v04",
+    "TrimmedTestScene2_graph__d03_v05",
+    "TrimmedTestScene2_graph__d03_v06",
+    "TrimmedTestScene2_graph__d03_v07",
+    "TrimmedTestScene2_graph__d04_v00",
+    "TrimmedTestScene2_graph__d04_v01",
+    "TrimmedTestScene2_graph__d04_v02",
+    "TrimmedTestScene2_graph__d04_v03",
+    "TrimmedTestScene2_graph__d04_v04",
+    "TrimmedTestScene2_graph__d04_v05",
+    "TrimmedTestScene2_graph__d04_v06",
+    "TrimmedTestScene2_graph__d04_v07",
+    "TrimmedTestScene2_graph__d05_v00",
+    "TrimmedTestScene2_graph__d05_v01",
+    "TrimmedTestScene2_graph__d05_v02",
+    "TrimmedTestScene2_graph__d05_v03",
+    "TrimmedTestScene2_graph__d05_v04",
+    "TrimmedTestScene2_graph__d05_v05",
+    "TrimmedTestScene2_graph__d05_v06",
+    "TrimmedTestScene2_graph__d05_v07",
+    "TrimmedTestScene3_graph__d06_v00",
+    "TrimmedTestScene3_graph__d06_v01",
+    "TrimmedTestScene3_graph__d06_v02",
+    "TrimmedTestScene3_graph__d06_v03",
+    "TrimmedTestScene3_graph__d06_v04",
+    "TrimmedTestScene3_graph__d06_v05",
+    "TrimmedTestScene3_graph__d06_v06",
+    "TrimmedTestScene3_graph__d06_v07",
+    "TrimmedTestScene3_graph__d07_v00",
+    "TrimmedTestScene3_graph__d07_v01",
+    "TrimmedTestScene3_graph__d07_v02",
+    "TrimmedTestScene3_graph__d07_v03",
+    "TrimmedTestScene3_graph__d07_v04",
+    "TrimmedTestScene3_graph__d07_v05",
+    "TrimmedTestScene3_graph__d07_v06",
+    "TrimmedTestScene3_graph__d07_v07",
+    "TrimmedTestScene3_graph__d08_v00",
+    "TrimmedTestScene3_graph__d08_v01",
+    "TrimmedTestScene3_graph__d08_v02",
+    "TrimmedTestScene3_graph__d08_v03",
+    "TrimmedTestScene3_graph__d08_v05",
+    "TrimmedTestScene3_graph__d08_v06",
+    "TrimmedTestScene3_graph__d08_v07",
+    "TrimmedTestScene4_graph__d09_v00",
+    "TrimmedTestScene4_graph__d09_v01",
+    "TrimmedTestScene4_graph__d09_v02",
+    "TrimmedTestScene4_graph__d09_v03",
+    "TrimmedTestScene4_graph__d09_v04",
+    "TrimmedTestScene4_graph__d09_v05",
+    "TrimmedTestScene4_graph__d09_v06",
+    "TrimmedTestScene4_graph__d09_v07",
+    "TrimmedTestScene4_graph__d10_v00",
+    "TrimmedTestScene4_graph__d10_v01",
+    "TrimmedTestScene4_graph__d10_v02",
+    "TrimmedTestScene4_graph__d10_v03",
+    "TrimmedTestScene4_graph__d10_v04",
+    "TrimmedTestScene4_graph__d10_v05",
+    "TrimmedTestScene4_graph__d10_v06",
+    "TrimmedTestScene4_graph__d10_v07",
+    "TrimmedTestScene4_graph__d11_v00",
+    "TrimmedTestScene4_graph__d11_v01",
+    "TrimmedTestScene4_graph__d11_v02",
+    "TrimmedTestScene4_graph__d11_v03",
+    "TrimmedTestScene4_graph__d11_v04",
+    "TrimmedTestScene4_graph__d11_v05",
+    "TrimmedTestScene4_graph__d11_v06",
+    "TrimmedTestScene4_graph__d11_v07",
+    "TrimmedTestScene5_graph__d12_v00",
+    "TrimmedTestScene5_graph__d12_v01",
+    "TrimmedTestScene5_graph__d12_v02",
+    "TrimmedTestScene5_graph__d12_v03",
+    "TrimmedTestScene5_graph__d12_v04",
+    "TrimmedTestScene5_graph__d12_v05",
+    "TrimmedTestScene5_graph__d12_v06",
+    "TrimmedTestScene5_graph__d12_v07",
+    "TrimmedTestScene5_graph__d13_v00",
+    "TrimmedTestScene5_graph__d13_v01",
+    "TrimmedTestScene5_graph__d13_v02",
+    "TrimmedTestScene5_graph__d13_v03",
+    "TrimmedTestScene5_graph__d13_v04",
+    "TrimmedTestScene5_graph__d13_v05",
+    "TrimmedTestScene5_graph__d13_v06",
+    "TrimmedTestScene5_graph__d13_v07",
+    "TrimmedTestScene5_graph__d14_v00",
+    "TrimmedTestScene5_graph__d14_v01",
+    "TrimmedTestScene5_graph__d14_v02",
+    "TrimmedTestScene5_graph__d14_v03",
+    "TrimmedTestScene5_graph__d14_v04",
+    "TrimmedTestScene5_graph__d14_v05",
+    "TrimmedTestScene5_graph__d14_v06",
+    "TrimmedTestScene5_graph__d14_v07",
+    "TrimmedTestScene6_graph__d15_v01",
+    "TrimmedTestScene6_graph__d15_v02",
+    "TrimmedTestScene6_graph__d15_v03",
+    "TrimmedTestScene6_graph__d15_v04",
+    "TrimmedTestScene6_graph__d15_v05",
+    "TrimmedTestScene6_graph__d15_v06",
+    "TrimmedTestScene6_graph__d15_v07",
+    "TrimmedTestScene6_graph__d16_v00",
+    "TrimmedTestScene6_graph__d16_v01",
+    "TrimmedTestScene6_graph__d16_v02",
+    "TrimmedTestScene6_graph__d16_v03",
+    "TrimmedTestScene6_graph__d16_v04",
+    "TrimmedTestScene6_graph__d16_v05",
+    "TrimmedTestScene6_graph__d16_v06",
+    "TrimmedTestScene6_graph__d16_v07",
+    "TrimmedTestScene6_graph__d17_v00",
+    "TrimmedTestScene6_graph__d17_v01",
+    "TrimmedTestScene6_graph__d17_v02",
+    "TrimmedTestScene6_graph__d17_v03",
+    "TrimmedTestScene6_graph__d17_v04",
+    "TrimmedTestScene6_graph__d17_v05",
+    "TrimmedTestScene6_graph__d17_v06",
+    "TrimmedTestScene6_graph__d17_v07",
+    "TrimmedTestScene7_graph__d18_v00",
+    "TrimmedTestScene7_graph__d18_v01",
+    "TrimmedTestScene7_graph__d18_v02",
+    "TrimmedTestScene7_graph__d18_v03",
+    "TrimmedTestScene7_graph__d18_v04",
+    "TrimmedTestScene7_graph__d18_v05",
+    "TrimmedTestScene7_graph__d18_v06",
+    "TrimmedTestScene7_graph__d18_v07",
+    "TrimmedTestScene7_graph__d19_v00",
+    "TrimmedTestScene7_graph__d19_v01",
+    "TrimmedTestScene7_graph__d19_v02",
+    "TrimmedTestScene7_graph__d19_v03",
+    "TrimmedTestScene7_graph__d19_v04",
+    "TrimmedTestScene7_graph__d19_v05",
+    "TrimmedTestScene7_graph__d19_v07"
+  ],
+  "paper_seen_scene_keys": [
+    "TrimmedTestScene1_graph__v0",
+    "TrimmedTestScene2_graph__v0",
+    "TrimmedTestScene3_graph__v0",
+    "TrimmedTestScene4_graph__v0",
+    "TrimmedTestScene5_graph__v0",
+    "TrimmedTestScene6_graph__v1"
+  ],
+  "goal_visibility": {
+    "open": {
+      "visible": 75
+    },
+    "placein": {
+      "visible": 437
+    },
+    "puton": {
+      "visible": 387
+    },
+    "turnon": {
+      "visible": 124
+    }
+  },
+  "unchanged_observations_by_action": {},
+  "raw_room_actions": {},
+  "consecutive_duplicate_actions": 0,
+  "consecutive_duplicate_examples": [],
+  "quality_thresholds": {
+    "max_unchanged_walk_rate": 0.05
+  },
+  "replay": {
+    "failures": 0,
+    "obs_mismatches": 0,
+    "next_obs_mismatches": 0,
+    "goal_failures": 0
+  },
+  "loader": {
+    "test_seen_task_seen_scene.jsonl": {
+      "raw_rows": 494,
+      "action_samples": 494,
+      "world_samples": 1482
+    },
+    "test_seen_task_unseen_scene.jsonl": {
+      "raw_rows": 1163,
+      "action_samples": 1163,
+      "world_samples": 3489
+    },
+    "test_unseen_task_seen_scene.jsonl": {
+      "raw_rows": 0,
+      "action_samples": 0,
+      "world_samples": 0,
+      "skipped": "empty_jsonl"
+    },
+    "test_unseen_task_unseen_scene.jsonl": {
+      "raw_rows": 1697,
+      "action_samples": 1697,
+      "world_samples": 5091
+    },
+    "scene_0/train.jsonl": {
+      "raw_rows": 311,
+      "action_samples": 311,
+      "world_samples": 933
+    },
+    "scene_1/train.jsonl": {
+      "raw_rows": 308,
+      "action_samples": 308,
+      "world_samples": 924
+    },
+    "scene_2/train.jsonl": {
+      "raw_rows": 327,
+      "action_samples": 327,
+      "world_samples": 981
+    },
+    "scene_3/train.jsonl": {
+      "raw_rows": 309,
+      "action_samples": 309,
+      "world_samples": 927
+    },
+    "scene_4/train.jsonl": {
+      "raw_rows": 349,
+      "action_samples": 349,
+      "world_samples": 1047
+    },
+    "scene_5/train.jsonl": {
+      "raw_rows": 328,
+      "action_samples": 328,
+      "world_samples": 984
+    }
+  },
+  "chat_template": {}
+}

@@ -162,7 +162,7 @@ uv run python tools/validate_alfworld_dataset.py \
 ```
 
 The generated protocols are documented in
-`reports/alfworld-data-processing-protocols-2026-05-27.md`. Legacy split/resplit scripts were moved to
+`reports/alfworld/alfworld-data-processing-protocols-2026-05-27.md`. Legacy split/resplit scripts were moved to
 `backups/alfworld-legacy-scripts-20260527/` for old task-type experiments. The
 protocol builder is the preferred ALFWorld data path.
 

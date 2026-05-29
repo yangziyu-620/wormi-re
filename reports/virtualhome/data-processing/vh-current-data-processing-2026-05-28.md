@@ -1,0 +1,396 @@
+# VirtualHome Current Data Processing Notes
+
+Date: 2026-05-28
+
+This note records the current VirtualHome data processing pipeline used for the
+`virtualhome-balanced-aux-compact17-sourceunique-20260528` run. The claim is
+deliberately conservative: this is a fixed-seed, paper-compatible
+reconstruction, not the authors' exact split.
+
+## Data Root
+
+Generated dataset:
+
+```text
+/root/autodl-tmp/wormi-data/virtualhome-balanced-aux-compact17-sourceunique-20260528
+```
+
+Main manifest:
+
+```text
+/root/autodl-tmp/wormi-data/virtualhome-balanced-aux-compact17-sourceunique-20260528/virtualhome_manifest.json
+```
+
+Validation report:
+
+```text
+/root/WorMI/reports/virtualhome/validation/vh-balanced-aux-compact17-sourceunique-validation-2026-05-28.json
+```
+
+Builder:
+
+```text
+/root/WorMI/tools/build_virtualhome_dataset_balanced.py
+```
+
+Dataset loader:
+
+```text
+/root/WorMI/wormi/datasets/virtualhome.py
+```
+
+## Build Command
+
+The current dataset was built with:
+
+```bash
+uv run python tools/build_virtualhome_dataset_balanced.py \
+  --raw-dir /root/autodl-tmp/wormi-data/raw/programs_processed_precond_nograb_morepreconds \
+  --vh-src /root/autodl-tmp/wormi-data/virtualhome-src \
+  --output-dir /root/autodl-tmp/wormi-data/virtualhome-balanced-aux-compact17-sourceunique-20260528 \
+  --seed 42 \
+  --variants-per-domain 12 \
+  --semantic-gate source_unique \
+  --observation-mode tmow_compact \
+  --compact-num-edges 17 \
+  --compact-next-mode compact \
+  --overwrite
+```
+
+Key choices:
+
+- `seed=42`: makes the task, scene, episode, and few-shot-style selections reproducible.
+- `variants-per-domain=12`: each scene domain is backed by multiple official VirtualHome init-graph variants, avoiding the old sparse single-scene problem.
+- `semantic-gate=source_unique`: rejects candidate episodes where the source/action object is too ambiguous at construction time.
+- `observation-mode=tmow_compact`: uses compact graph observations inspired by TMoW-style processing instead of dumping the full graph.
+- `compact-num-edges=17`: keeps observations small enough for training while preserving local object/room relations.
+- `compact-next-mode=compact`: both current and next observations use the same compact representation.
+
+## Core Split Rule
+
+The split rule is:
+
+```text
+train  = seen_task   intersect seen_scene
+eval A = seen_task   intersect seen_scene, episode-held-out from train
+eval B = seen_task   intersect unseen_scene
+eval C = unseen_task intersect unseen_scene
+```
+
+Important: eval C is not computed by subtraction from the total episode count.
+It is sampled only from the legal `unseen_task intersect unseen_scene` pool.
+This avoids mixing in:
+
+- `unseen_task intersect seen_scene`
+- residual `seen_task intersect seen_scene`
+- residual `seen_task intersect unseen_scene`
+
+The generated episode counts are:
+
+| split | episodes | rows |
+| --- | ---: | ---: |
+| train | 384 | 1977 |
+| eval A: seen task + seen scene | 96 | 431 |
+| eval B: seen task + unseen scene | 224 | 1133 |
+| eval C: unseen task + unseen scene | 319 | 1749 |
+| total | 1023 | 5290 |
+
+The training data is materialized as six world-model directories:
+
+| world model dir | train episodes | train rows |
+| --- | ---: | ---: |
+| `scene_0` | 64 | 356 |
+| `scene_1` | 64 | 333 |
+| `scene_2` | 64 | 321 |
+| `scene_3` | 64 | 331 |
+| `scene_4` | 64 | 338 |
+| `scene_5` | 64 | 298 |
+
+This matches the working assumption that `N=6` world models corresponds to six
+seen scene domains. The paper does not publish exact scene IDs, task IDs, or
+episode IDs, so this must be reported as an assumption.
+
+## Task Split
+
+The reconstruction follows the paper-level task count:
+
+```text
+seen tasks   = 16
+unseen tasks = 62
+total tasks  = 78
+```
+
+The selected seen-task family ratio follows the paper's four VirtualHome task
+families as closely as possible:
+
+```text
+TurnOn = 2
+Open   = 1
+PutOn  = 6
+PlaceIn = 7
+```
+
+Risk: `Open=1` is inherently brittle because one selected task can dominate
+that family's behavior. For a final report, this split should be treated as the
+main fixed split, and robustness seeds should be added if time permits.
+
+## Scene Domains
+
+The paper reports `6/14` seen/unseen scene counts but does not publish the
+exact scene split. The current reconstruction treats a scene domain as a group
+of official VirtualHome init-graph variants from one base apartment.
+
+Why not require a full task-scene Cartesian product:
+
+- VirtualHome has only 1023 total episodes over 78 tasks and 20 scenes.
+- The average task-scene cell has fewer than one episode.
+- Requiring every `seen_scene x seen_task` cell to have several train/eval
+  episodes would force selection toward only high-coverage cells and bias the
+  benchmark.
+
+Instead, the builder uses soft balancing by scene, task, and family. This keeps
+the scale paper-compatible without pretending the raw data is dense.
+
+## Episode Construction
+
+Each candidate episode is generated by executing an expert/planner program on
+an official VirtualHome init graph through EvolvingGraph. For each successful
+episode, the builder records step-level rows:
+
+```json
+{
+  "instruction": "...",
+  "observation": "compact graph text at step i",
+  "action": "expert action at step i",
+  "next_observation": "compact graph text at step i+1"
+}
+```
+
+The validation later replays these rows and checks that the stored observation
+and next observation match the EvolvingGraph execution result.
+
+## Semantic Gate
+
+The current dataset uses:
+
+```text
+semantic_gate = source_unique
+```
+
+This is a construction-time filter. Its purpose is to avoid examples where the
+main acted-on object is ambiguous in the initial graph. Ambiguity was one of
+the causes of earlier bad data: the same textual action class could refer to
+multiple object instances, making the supervision target semantically noisy.
+
+The stricter `source_unique_target_room_unique` gate was tried but was too
+restrictive and reduced coverage too much. The current `source_unique` gate is
+the compromise: it removes the worst instance-binding noise while preserving
+enough episodes for training and evaluation.
+
+## Observation Processing
+
+The current observation mode is:
+
+```text
+mode = tmow_compact
+compact_num_edges = 17
+compact_next_mode = compact
+```
+
+Motivation:
+
+- Full VirtualHome graphs are long and noisy for a small LLaMA-based policy.
+- Compact observations emphasize local object, room, containment, support, and
+  state relations that are relevant to the action.
+- The same compact format is used in train and rollout eval, avoiding a train
+  vs eval observation contract mismatch.
+
+Tradeoff:
+
+- Compact observations are cleaner, but they may omit information needed for
+  long-horizon recovery during rollout.
+- This can explain why offline action-following scores are higher than real
+  rollout scores.
+
+## World-Model Auxiliary Tasks
+
+The current `VirtualHomeDataset` expands every raw transition into three world
+model samples when loaded for world-model training:
+
+| auxiliary task | input | target |
+| --- | --- | --- |
+| behavior cloning | instruction + current observation | action |
+| dynamics | instruction + current observation + action | next observation |
+| affordance | current observation | feasible action |
+
+This implements the reviewer-described world-model training signal:
+
+```text
+1. predict next observation from state/action/instruction
+2. identify feasible action from state
+3. predict instruction-conditioned action from instruction/state
+```
+
+The validation report confirms the expansion:
+
+```text
+raw rows      = 5290
+action samples = 5290
+world samples  = 15870
+```
+
+So each transition contributes exactly three world-model auxiliary examples.
+
+## Leakage Controls
+
+The builder prevents train/test leakage at two levels:
+
+```text
+trajectory_id_overlap = 0
+exact_row_overlap = 0
+```
+
+The split is episode-level, not transition-level. This is critical: holding out
+individual rows from a trajectory would leak neighboring states/actions from
+the same program and make eval A artificially easy.
+
+Known residual:
+
+```text
+exact_action_sequence_overlap = 49
+same_task_exact_action_sequence_overlap = 49
+```
+
+This does not mean the same episode leaked. It means different episodes can
+share the same action sequence. That is plausible in VirtualHome because many
+tasks reduce to templates like walk, grab, walk, put. It should still be
+reported as a limitation because it can mildly inflate offline sequence-style
+metrics. It is less directly useful in rollout because state grounding still
+matters.
+
+## Validation Evidence
+
+The current validation result has:
+
+```text
+errors = []
+total_rows = 5290
+trajectories = 1023
+train_test_overlap = 0
+trajectory_id_overlap = 0
+exact_row_overlap = 0
+```
+
+Replay checks:
+
+```text
+replay.failures = 0
+replay.obs_mismatches = 0
+replay.next_obs_mismatches = 0
+replay.goal_failures = 0
+```
+
+Loader and chat-template checks:
+
+```text
+action_samples = 5290
+world_samples = 15870
+loss_mask_samples = 21160
+bad_count = 0
+min_supervised_tokens = 4
+max_supervised_tokens = 728
+```
+
+These checks prove that:
+
+- the JSONL files match the WorMI dataset loader contract;
+- the LLaMA-3 chat template produces supervised assistant tokens;
+- each episode can be replayed in EvolvingGraph;
+- stored observations and next observations match replayed graph states;
+- final goal states are reachable for the expert trajectories.
+
+Warnings:
+
+- Some cached scene variants have no selected rows. This is expected after
+  filtering and sampling.
+- The validator reports 220 effective scene variant keys, while the intended
+  paper-level count is 20 scene domains. This is a naming/granularity issue:
+  the builder uses multiple variants per domain.
+- `walk` has 42 unchanged observations out of 3201 walk actions. This is below
+  the configured warning threshold and mostly reflects compact observation
+  truncation, not failed execution.
+
+## Why Earlier Data Failed
+
+The previous bad runs were affected by several data issues:
+
+- sparse per-world-model training data;
+- overly literal or noisy full graph text;
+- ambiguous class-to-instance grounding;
+- train/eval split definitions that were easy to make leaky or residual;
+- world-model training that did not fully implement the three auxiliary tasks;
+- observation/action text mismatches that could silently remove useful
+  supervision.
+
+The current processing addresses these directly:
+
+- six world models each receive 64 train episodes;
+- compact observations reduce irrelevant graph noise;
+- `source_unique` removes the worst ambiguous source-object cases;
+- eval C is sampled only from `unseen_task intersect unseen_scene`;
+- exact row and trajectory overlap are blocked;
+- loader expansion implements behavior cloning, dynamics, and affordance tasks;
+- chat-template validation checks that supervision is not silently empty.
+
+## What This Data Can and Cannot Prove
+
+What it can prove:
+
+```text
+The current dataset is paper-compatible, fixed-seed, executable, loader-valid,
+chat-template-valid, and free of episode/exact-row train-test leakage.
+```
+
+What it cannot prove:
+
+```text
+It is not the authors' exact split.
+It does not prove the compact observation contains all information needed for rollout.
+It does not by itself explain the remaining gap to the paper.
+It does not remove differences in model size, stage-2 training stability, rollout evaluator implementation, or hyperparameters.
+```
+
+Therefore this dataset is a sound basis for the next clean experiment, but the
+results should be reported as a paper-compatible reconstruction unless the
+authors' exact VirtualHome split becomes available.
+
+## Current Result Context
+
+The latest eval finished, but stage-2 training failed before a clean completion
+because of a threaded autograd inplace conflict. The saved `last` checkpoint was
+still evaluated.
+
+Offline JSONL-style eval:
+
+| split | SR | PS |
+| --- | ---: | ---: |
+| seen task + seen scene | 67.71% | 1.34 |
+| seen task + unseen scene | 64.29% | 1.25 |
+| unseen task + unseen scene | 18.67% | 4.18 |
+
+VirtualHome rollout eval:
+
+| split | SR | PS |
+| --- | ---: | ---: |
+| seen task + seen scene | 61.46% | 13.72 |
+| seen task + unseen scene | 38.39% | 20.18 |
+| unseen task + unseen scene | 17.00% | 25.39 |
+
+Interpretation:
+
+- The data is much better than the earlier failed versions, because seen-task
+  performance is now clearly non-random.
+- The remaining gap to the paper should not be blamed on data alone until
+  stage-2 trains cleanly and ablations are run.
+- The most important next checks are clean sequential/non-threaded stage-2,
+  base-only baseline, no-world-model baseline, and auxiliary-task ablations.

@@ -1,0 +1,227 @@
+{
+  "data_root": "/root/autodl-tmp/wormi-data/virtualhome-paperlike-v2-fixed-20260527",
+  "dataset_mode": "paper_like",
+  "manifest": "/root/autodl-tmp/wormi-data/virtualhome-paperlike-v2-fixed-20260527/virtualhome_manifest.json",
+  "errors": [],
+  "warnings": [
+    "actions with unchanged observation: {'walk': {'unchanged': 26, 'total': 3335}}"
+  ],
+  "file_stats": {
+    "test_seen_task_seen_scene.jsonl": {
+      "rows": 161,
+      "trajectories": 32
+    },
+    "test_seen_task_unseen_scene.jsonl": {
+      "rows": 1147,
+      "trajectories": 212
+    },
+    "test_unseen_task_seen_scene.jsonl": {
+      "rows": 1779,
+      "trajectories": 333
+    },
+    "test_unseen_task_unseen_scene.jsonl": {
+      "rows": 2060,
+      "trajectories": 385
+    },
+    "scene_0/train.jsonl": {
+      "rows": 46,
+      "trajectories": 10
+    },
+    "scene_1/train.jsonl": {
+      "rows": 50,
+      "trajectories": 10
+    },
+    "scene_2/train.jsonl": {
+      "rows": 51,
+      "trajectories": 10
+    },
+    "scene_3/train.jsonl": {
+      "rows": 43,
+      "trajectories": 10
+    },
+    "scene_4/train.jsonl": {
+      "rows": 58,
+      "trajectories": 11
+    },
+    "scene_5/train.jsonl": {
+      "rows": 56,
+      "trajectories": 10
+    }
+  },
+  "total_rows": 5451,
+  "trajectories": 1023,
+  "train_test_overlap": 0,
+  "leakage": {
+    "trajectory_id_overlap": 0,
+    "exact_row_overlap": 0,
+    "exact_action_sequence_overlap": 42,
+    "same_task_exact_action_sequence_overlap": 42
+  },
+  "family_row_counts": {
+    "open": 227,
+    "placein": 2669,
+    "puton": 2366,
+    "turnon": 189
+  },
+  "action_counts": {
+    "grab": 867,
+    "open": 310,
+    "put": 429,
+    "putin": 438,
+    "switchon": 72,
+    "walk": 3335
+  },
+  "trajectory_lengths": {
+    "2": 52,
+    "3": 104,
+    "4": 55,
+    "5": 250,
+    "6": 407,
+    "7": 120,
+    "8": 32,
+    "9": 3
+  },
+  "trajectory_length_stats": {
+    "mean": 5.328445747800586,
+    "median": 6,
+    "min": 2,
+    "max": 9,
+    "p10": 3,
+    "p90": 7
+  },
+  "split_episode_counts": {
+    "seen_seen": 93,
+    "seen_unseen": 212,
+    "unseen_seen": 333,
+    "unseen_unseen": 385
+  },
+  "split_avg_lengths": {
+    "seen_seen": 5.0,
+    "seen_unseen": 5.410377358490566,
+    "unseen_seen": 5.342342342342342,
+    "unseen_unseen": 5.35064935064935
+  },
+  "seen_tasks": 16,
+  "unseen_tasks": 62,
+  "expected_seen_tasks": 16,
+  "expected_unseen_tasks": 62,
+  "missing_seen_tasks": [],
+  "missing_unseen_tasks": [],
+  "missing_all_tasks": [],
+  "extra_seen_tasks": [],
+  "extra_unseen_tasks": [],
+  "scenes_present": [
+    "TrimmedTestScene1_graph__v0",
+    "TrimmedTestScene1_graph__v1",
+    "TrimmedTestScene1_graph__v2",
+    "TrimmedTestScene2_graph__v0",
+    "TrimmedTestScene2_graph__v1",
+    "TrimmedTestScene2_graph__v2",
+    "TrimmedTestScene3_graph__v0",
+    "TrimmedTestScene3_graph__v1",
+    "TrimmedTestScene3_graph__v2",
+    "TrimmedTestScene4_graph__v0",
+    "TrimmedTestScene4_graph__v1",
+    "TrimmedTestScene4_graph__v2",
+    "TrimmedTestScene5_graph__v0",
+    "TrimmedTestScene5_graph__v1",
+    "TrimmedTestScene5_graph__v2",
+    "TrimmedTestScene6_graph__v0",
+    "TrimmedTestScene6_graph__v1",
+    "TrimmedTestScene6_graph__v2",
+    "TrimmedTestScene7_graph__v0",
+    "TrimmedTestScene7_graph__v1"
+  ],
+  "paper_seen_scene_keys": [
+    "TrimmedTestScene1_graph__v0",
+    "TrimmedTestScene2_graph__v0",
+    "TrimmedTestScene3_graph__v0",
+    "TrimmedTestScene4_graph__v0",
+    "TrimmedTestScene5_graph__v0",
+    "TrimmedTestScene6_graph__v1"
+  ],
+  "goal_visibility": {
+    "open": {
+      "visible": 84
+    },
+    "placein": {
+      "visible": 438
+    },
+    "puton": {
+      "visible": 429
+    },
+    "turnon": {
+      "visible": 72
+    }
+  },
+  "unchanged_observations_by_action": {
+    "walk": {
+      "unchanged": 26,
+      "total": 3335
+    }
+  },
+  "raw_room_actions": {},
+  "consecutive_duplicate_actions": 0,
+  "consecutive_duplicate_examples": [],
+  "quality_thresholds": {
+    "max_unchanged_walk_rate": 0.05
+  },
+  "replay": {
+    "failures": 0,
+    "obs_mismatches": 0,
+    "next_obs_mismatches": 0,
+    "goal_failures": 0
+  },
+  "loader": {
+    "test_seen_task_seen_scene.jsonl": {
+      "raw_rows": 161,
+      "action_samples": 161,
+      "world_samples": 483
+    },
+    "test_seen_task_unseen_scene.jsonl": {
+      "raw_rows": 1147,
+      "action_samples": 1147,
+      "world_samples": 3441
+    },
+    "test_unseen_task_seen_scene.jsonl": {
+      "raw_rows": 1779,
+      "action_samples": 1779,
+      "world_samples": 5337
+    },
+    "test_unseen_task_unseen_scene.jsonl": {
+      "raw_rows": 2060,
+      "action_samples": 2060,
+      "world_samples": 6180
+    },
+    "scene_0/train.jsonl": {
+      "raw_rows": 46,
+      "action_samples": 46,
+      "world_samples": 138
+    },
+    "scene_1/train.jsonl": {
+      "raw_rows": 50,
+      "action_samples": 50,
+      "world_samples": 150
+    },
+    "scene_2/train.jsonl": {
+      "raw_rows": 51,
+      "action_samples": 51,
+      "world_samples": 153
+    },
+    "scene_3/train.jsonl": {
+      "raw_rows": 43,
+      "action_samples": 43,
+      "world_samples": 129
+    },
+    "scene_4/train.jsonl": {
+      "raw_rows": 58,
+      "action_samples": 58,
+      "world_samples": 174
+    },
+    "scene_5/train.jsonl": {
+      "raw_rows": 56,
+      "action_samples": 56,
+      "world_samples": 168
+    }
+  }
+}
