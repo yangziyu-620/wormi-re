@@ -20,6 +20,28 @@ reports/
 
 ## VirtualHome
 
+### Living survey (start here)
+
+```text
+reports/virtualhome/wormi-data-construction-failure-survey-2026-05-30.md
+```
+
+Chronological "attempt → problem encountered" survey of every VirtualHome
+data-construction attempt against the paper Table 1 target, plus ranked
+root-cause diagnosis and open questions. **Living document — update it after
+every new data-build / training / eval experiment.**
+
+### Data-validity acceptance standard (the ex-ante bar — MUST pass before training)
+
+```text
+reports/virtualhome/wormi-data-validity-acceptance-standard-2026-05-31.md
+```
+
+Permanent, versioned acceptance criteria with explicit thresholds. Core principle:
+data is valid **iff the EVAL pipeline (not the build pipeline) can replay the
+expert to ~100%**. HARD gates (NO-GO if any fails) vs SOFT (logged). Enforced by
+`tools/expert_replay_vh.py` (A-class) + `tools/validate_virtualhome_dataset.py`.
+
 ### `virtualhome/data-processing/`
 
 Data construction protocols, split definitions, implementation notes, and

@@ -169,7 +169,7 @@ def _resolve_observation_format(first: dict[str, Any], args: VirtualHomeRolloutA
 
 def _rollout_task_args(first: dict[str, Any]) -> list[str]:
     meta = first.get("_meta") or {}
-    args = meta.get("task_args")
+    args = meta.get("resolved_args") or meta.get("task_args")
     if isinstance(args, list) and args:
         return [str(arg).replace(" ", "_").lower() for arg in args]
     return []
@@ -377,12 +377,79 @@ def _held_object_info(graph: dict[str, Any]) -> tuple[str, int] | None:
     return None
 
 
+def _build_goal_binding(
+    init_graph: dict[str, Any], goal: dict[str, Any]
+) -> dict[str, Any]:
+    """Resolve goal-relevant instances from (goal/task-args + initial graph) only.
+
+    This mirrors the build-time expert's instance selector
+    (``compact_virtualhome_observations.select_task_instances``), which binds a
+    class-level task to concrete instances using only the task family/args and
+    the scene's *initial* graph -- exactly the information a trained agent has
+    when the scene is reset. It never reads gold actions or ``_meta.script_line``.
+
+    The returned binding records, per goal role, the chosen node id and the
+    class it belongs to:
+      - source_id / source_class   (the object to be manipulated)
+      - target_id / target_class   (the container/surface it must end up at)
+      - source_container_id / source_container_class
+        (the container the source object initially sits inside, which the agent
+         must OPEN to reach the source)
+
+    These ids are stable for the whole episode because they are computed once on
+    the reset graph; recomputing on the live graph is unsafe (e.g. a container's
+    CLOSED state flips after OPEN, which would re-bind ``target`` to a different
+    instance mid-episode).
+    """
+    family = goal.get("family")
+    args = [str(a).lower().replace(" ", "_") for a in goal.get("args", [])]
+    selection = select_task_instances(init_graph, family, args)
+    nodes = _nodes_by_id(init_graph)
+
+    def cls_of(node_id: Any) -> str | None:
+        node = nodes.get(int(node_id)) if node_id is not None else None
+        return node.get("class_name") if node is not None else None
+
+    source_id = selection.get("source_id")
+    target_id = selection.get("target_id")
+    source_container_id = selection.get("source_container")
+    return {
+        "source_id": int(source_id) if source_id is not None else None,
+        "source_class": cls_of(source_id),
+        "target_id": int(target_id) if target_id is not None else None,
+        "target_class": cls_of(target_id),
+        "source_container_id": (
+            int(source_container_id) if source_container_id is not None else None
+        ),
+        "source_container_class": cls_of(source_container_id),
+    }
+
+
+def _goal_candidate_ids(
+    binding: dict[str, Any] | None, class_name: str
+) -> list[tuple[str, int]]:
+    """Goal-relevant (role, node_id) pairs whose instance class is ``class_name``."""
+    if not binding:
+        return []
+    out: list[tuple[str, int]] = []
+    for role, id_key, cls_key in (
+        ("source", "source_id", "source_class"),
+        ("target", "target_id", "target_class"),
+        ("source_container", "source_container_id", "source_container_class"),
+    ):
+        node_id = binding.get(id_key)
+        if node_id is not None and binding.get(cls_key) == class_name:
+            out.append((role, int(node_id)))
+    return out
+
+
 def _choose_node_id(
     graph: dict[str, Any],
     class_name: str,
     *,
     verb: str,
     goal: dict[str, Any] | None = None,
+    goal_binding: dict[str, Any] | None = None,
 ) -> int | None:
     ids = _node_ids_by_class(graph, class_name)
     if not ids:
@@ -394,9 +461,39 @@ def _choose_node_id(
     if nodes.get(ids[0], {}).get("category") == "Rooms":
         return ids[0]
 
+    id_set = set(ids)
+    held = _held_object_info(graph)
+    is_put_phase = verb in {"put", "putin"} or held is not None
+
+    # --- Goal-structure binding dominates -------------------------------------
+    # The class-level action binds to the instance that stands in the goal
+    # relation, using the stable initial-graph selection. Live state only breaks
+    # ties between same-class goal candidates (e.g. source vs target both a
+    # "sink"): before the source is in hand the agent is working the source side
+    # (source / its container); once the source is held the put-phase target
+    # instance is the relevant one.
+    candidates = [
+        (role, node_id)
+        for role, node_id in _goal_candidate_ids(goal_binding, class_name)
+        if node_id in id_set
+    ]
+    if candidates:
+        if len(candidates) == 1:
+            return candidates[0][1]
+        roles = {role: node_id for role, node_id in candidates}
+        if is_put_phase and "target" in roles:
+            return roles["target"]
+        if not is_put_phase:
+            if "source_container" in roles:
+                return roles["source_container"]
+            if "source" in roles:
+                return roles["source"]
+        # Deterministic fallback among goal candidates.
+        return min(node_id for _, node_id in candidates)
+
+    # --- Proximity / held-object tie-breakers (no goal candidate of this class) -
     close_ids = _character_close_ids(graph)
     char_rooms = _character_room_ids(graph)
-    held = _held_object_info(graph)
     goal_args = [str(arg) for arg in (goal or {}).get("args", [])]
     source_cls = goal_args[0] if goal_args else None
     target_cls = goal_args[1] if len(goal_args) > 1 else None
@@ -537,7 +634,10 @@ def _parse_action(text: str) -> ParsedAction | None:
 
 
 def _script_line_from_prediction(
-    graph: dict[str, Any], prediction: str, goal: dict[str, Any] | None = None
+    graph: dict[str, Any],
+    prediction: str,
+    goal: dict[str, Any] | None = None,
+    goal_binding: dict[str, Any] | None = None,
 ) -> tuple[str | None, str | None]:
     parsed = _parse_action(prediction)
     if parsed is None:
@@ -551,7 +651,9 @@ def _script_line_from_prediction(
             return None, f"object not found: {raw_arg!r}"
         if _class_category(graph, cls) == "Characters":
             return None, f"invalid target: {cls}"
-        node_id = _choose_node_id(graph, cls, verb=verb, goal=goal)
+        node_id = _choose_node_id(
+            graph, cls, verb=verb, goal=goal, goal_binding=goal_binding
+        )
         if node_id is None:
             return None, f"object id not found: {cls}"
         action = {
@@ -577,12 +679,22 @@ def _script_line_from_prediction(
             or _class_category(graph, target) == "Characters"
         ):
             return None, f"invalid put target: {source}, {target}"
-        held = _held_object_info(graph)
-        if held is not None and held[0] == source:
-            source_id = held[1]
-        else:
-            source_id = _choose_node_id(graph, source, verb=verb, goal=goal)
-        target_id = _choose_node_id(graph, target, verb=verb, goal=goal)
+        # Goal-structure binding dominates for the put source: the task's source
+        # instance is the one the goal relation is defined over. The held-object
+        # id is only a fallback when the source class has no goal binding. (The
+        # EvolvingGraph executor with instance_selection=False does not honour an
+        # arbitrary held id for PUTIN/PUTBACK -- it validates the source id
+        # against the goal-relevant instance, so the goal id must win.)
+        source_id = _choose_node_id(
+            graph, source, verb=verb, goal=goal, goal_binding=goal_binding
+        )
+        if source_id is None:
+            held = _held_object_info(graph)
+            if held is not None and held[0] == source:
+                source_id = held[1]
+        target_id = _choose_node_id(
+            graph, target, verb=verb, goal=goal, goal_binding=goal_binding
+        )
         if source_id is None or target_id is None:
             return None, f"put ids not found: {source}, {target}"
         action = "PUTIN" if verb == "putin" else "PUTBACK"
@@ -593,7 +705,7 @@ def _script_line_from_prediction(
 
 def _infer_goal(row: dict[str, Any]) -> dict[str, Any]:
     meta = row.get("_meta", {})
-    args = [str(x) for x in meta.get("task_args", [])]
+    args = [str(x) for x in (meta.get("resolved_args") or meta.get("task_args", []))]
     instruction = str(row["instruction"]).lower()
     if instruction.startswith("turn on "):
         family = "turnon"
@@ -677,10 +789,16 @@ def _eval_episode(
     read_script_from_string = eg_modules["scripts"].read_script_from_string
 
     env_graph = EnvironmentGraph(copy.deepcopy(scene_inits[scene]))
-    # Generated actions are class-level ("grab drawing"), matching the
-    # observation format. Let EvolvingGraph bind a feasible instance instead of
-    # forcing the first graph id for classes with duplicates.
-    state = EnvironmentState(env_graph, {}, instance_selection=False)
+    # Generated actions are class-level ("grab drawing"); `_script_line_from_prediction`
+    # now resolves each class to the goal-relevant *graph node id* (see
+    # `_choose_node_id` / `_build_goal_binding`). We therefore run the executor
+    # with instance_selection=True so it honours those resolved ids exactly.
+    # With instance_selection=False the executor re-enumerates and re-binds a
+    # class-level script object to whatever instance it finds first (typically
+    # the lowest id), silently overriding our goal-aware choice -- e.g. WALK/OPEN
+    # would land on cupboard 126 while the task object sits in cupboard 127,
+    # leaving it "inside other closed thing" and breaking the goal.
+    state = EnvironmentState(env_graph, {}, instance_selection=True)
     executor = ScriptExecutor(env_graph, {}, char_index=0)
 
     invalid_actions = 0
@@ -690,6 +808,7 @@ def _eval_episode(
 
     selection = select_task_instances(scene_inits[scene], goal["family"], goal["args"])
     selected_node_ids = selected_instance_ids_from_selection(selection)
+    goal_binding = _build_goal_binding(scene_inits[scene], goal)
 
     if _goal_satisfied(final_graph, goal):
         return RolloutResult(True, 0, 0, 0, goal)
@@ -708,7 +827,9 @@ def _eval_episode(
             args.temperature,
             args.top_p,
         )
-        script_line, parse_error = _script_line_from_prediction(graph, prediction, goal)
+        script_line, parse_error = _script_line_from_prediction(
+            graph, prediction, goal, goal_binding
+        )
         executed = False
         execution_error = None
         if script_line is None:

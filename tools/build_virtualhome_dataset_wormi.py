@@ -454,11 +454,18 @@ class Builder:
 
         test_buckets = {"seen_seen": [], "seen_unseen": [],
                         "unseen_unseen": [], "unseen_seen": []}
+        # Per-scene eval_a rows: scene_dir -> rows for that seen domain only.
+        # Used by write() to produce scene_N/test.jsonl containing only that
+        # world model's own held-out seen-task seen-scene episodes, instead of
+        # a symlink to the global pool.
+        eval_a_by_scene_dir: dict[str, list[dict[str, Any]]] = defaultdict(list)
         for slot in eval_a_slots:
+            sd = scene_dir_for_domain[slot["scene_domain"]]
             for row in slot["rows"]:
                 out = copy.deepcopy(row)
                 out["_meta"]["split"] = "eval_seen_task_seen_scene"
                 test_buckets["seen_seen"].append(out)
+                eval_a_by_scene_dir[sd].append(out)
         for slot in eval_b_slots:
             for row in slot["rows"]:
                 out = copy.deepcopy(row)
@@ -475,6 +482,7 @@ class Builder:
         quality = self._quality(train_by_scene_dir, test_buckets, pools)
         return {
             "train_by_scene_dir": train_by_scene_dir,
+            "eval_a_by_scene_dir": dict(eval_a_by_scene_dir),
             "test_buckets": test_buckets,
             "manifest": manifest,
             "quality": quality,
@@ -631,6 +639,7 @@ class Builder:
             if link.exists() or link.is_symlink():
                 link.unlink()
             link.symlink_to(Path("..") / target)
+        eval_a_by_scene_dir = materialized.get("eval_a_by_scene_dir", {})
         for sd, rows in materialized["train_by_scene_dir"].items():
             d = out / sd
             d.mkdir(exist_ok=True)
@@ -639,10 +648,18 @@ class Builder:
             with (d / "train.jsonl").open("w") as f:
                 for row in rows:
                     f.write(json.dumps(row) + "\n")
-            link = d / "test.jsonl"
-            if link.exists() or link.is_symlink():
-                link.unlink()
-            link.symlink_to(Path("..") / "test_seen_task_seen_scene.jsonl")
+            # Write per-scene test.jsonl containing ONLY this world model's own
+            # held-out seen-task seen-scene episodes, NOT a symlink to the global
+            # pool (which mixes all scenes and carries wrong _meta.scene for the
+            # world model being evaluated).
+            test_path = d / "test.jsonl"
+            if test_path.exists() or test_path.is_symlink():
+                test_path.unlink()
+            scene_test_rows = eval_a_by_scene_dir.get(sd, [])[:]
+            rng.shuffle(scene_test_rows)
+            with test_path.open("w") as f:
+                for row in scene_test_rows:
+                    f.write(json.dumps(row) + "\n")
 
     def run(self) -> None:
         materialized = self.materialize()

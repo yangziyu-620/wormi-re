@@ -8,9 +8,17 @@ cd "$ROOT_DIR"
 
 CURRICULA_PATH="${CURRICULA_PATH:-tools/wormi_curricula_vh.py}"
 DATA_DISK="${DATA_DISK:-/root/autodl-tmp}"
-DATA_ROOT="${DATA_ROOT:-$DATA_DISK/wormi-data/virtualhome}"
+DATA_ROOT="${DATA_ROOT:-$DATA_DISK/wormi-data/virtualhome-realtasks-v3-20260530}"
 VH_SRC="${VH_SRC:-$DATA_DISK/wormi-data/virtualhome-src}"
-SCENE_INITS_JSON="${SCENE_INITS_JSON:-$DATA_DISK/wormi-data/scene-inits/init_graphs_20_semantic.json}"
+# Prefer the dataset-local scene_inits.json when available (e.g. v3 flat layout).
+# Fall back to the legacy shared path for older datasets that do not embed one.
+if [[ -z "${SCENE_INITS_JSON:-}" ]]; then
+  if [[ -f "$DATA_ROOT/scene_inits.json" ]]; then
+    SCENE_INITS_JSON="$DATA_ROOT/scene_inits.json"
+  else
+    SCENE_INITS_JSON="$DATA_DISK/wormi-data/scene-inits/init_graphs_20_semantic.json"
+  fi
+fi
 WORLD_CKPT_ROOT="${WORLD_CKPT_ROOT:-$DATA_DISK/wormi-checkpoints/world-vh}"
 WORMI_CKPT_ROOT="${WORMI_CKPT_ROOT:-$DATA_DISK/wormi-checkpoints/wormi-vh}"
 MODEL_NAME="${MODEL_NAME:-$WORMI_CKPT_ROOT/wormi-vh-n6/last}"
