@@ -72,7 +72,7 @@ trainer_args = WorMITrainerConfig(
     gradient_accumulation_steps=int(
         os.environ.get("WORMI_VH_STAGE2_GRADIENT_ACCUMULATION_STEPS", "4")
     ),
-    learning_rate=1e-5,
+    learning_rate=float(os.environ.get("WORMI_VH_STAGE2_INNER_LR", "1e-5")),
     lr_scheduler_type=SchedulerType.COSINE,
 )
 

@@ -227,3 +227,63 @@ WorMI 的 baseline SayCanPay（`github.com/RishiHazra/saycanpay`）公开的 `vi
 | col3 test_unseen_task_unseen_scene | 88.71% | **100.00%** (319/319) | 100.00% | 0 |
 
 **判定：A2/A3/A4 门控全部 PASS（>=0.99，binding_loss=0）。** 改动文件：`wormi/scripts/eval_vh_rollout.py`、`tools/expert_replay_vh.py`。详细变更与 no-cheating 证据见 `wormi-rootfix-status-2026-05-31.md` Step A2+A3。
+
+## 9. 首次端到端模型 rollout 评测（2026-05-31）
+
+v3 数据集（825 ep / train 254 / 6 world model）跑通 stage1（per-scene SFT）+ stage2（threaded-meta，`WORMI_ALLOW_UNSAFE_THREADED_META=1`、直接均值、240 step、train_loss≈0.41），用 `eval_vh_rollout.py`（环境 rollout，paper 口径）全量评测。模型 = `wormi-checkpoints/wormi-vh/wormi-vh-n6/last`，检索 K=3，max_steps=30，observation=full。结果文件 `wormi-vh-n6/vh-rollout-full/vh-rollout-summary.json`。
+
+| 列 | 我们 SR | 我们 PS | invalid/ep | exec/ep | 论文 SR | 论文 PS | retrieved WM |
+|---|---|---|---|---|---|---|---|
+| col_1 seen-seen | **22.08%** (77) | 23.82 | 8.43 | 15.39 | 85.78 | 10.76 | [4,2,3] |
+| col_2 seen-unseen | **20.00%** (175) | 24.41 | 8.13 | 16.28 | 80.26 | 12.42 | [4,0,5] |
+| col_3 unseen-unseen | **14.33%** (300) | 25.99 | 13.69 | 12.30 | 66.12 | 15.17 | [3,2,4] |
+
+**判定：管线干净、模型很弱（差距数量级）。** eval 这条管线已被 gold 动作证伪过（§8 expert-SR=100%），所以瓶颈在训练/推理侧，非评测 bug。
+
+**新强信号 — invalid_actions 极高（8~14/ep）**：模型自生成时大量动作被环境拒绝（col_3 约半数动作无效），而 expert-replay 用 gold class-action 是 100%。这指向「推理时 模型输出→scriptline 落地/grounding 缺口」，候选根因按先验排序：
+- P-INF（待诊断，最便宜）：模型预测的 action 字符串与 `_script_line_from_prediction` 期望格式/对象词表不吻合，或 goal-binding 在 model 路径上未生效（gold 路径已修，model 路径需复核），导致动作打不进环境——若属实，SR 被推理层封顶，与数据量无关。
+- P-DATA：v3 仅 254 train / 6 WM，远小于论文 ~1023 / 16 seen task，Reptile 元学习先验不足。
+- P-META：threaded-meta 直接均值近似 ≠ 论文 faithful 顺序 Reptile（seqmeta 历史 SR≈0，疑另有 bug）。
+- P-SFT：stage1 world model 可能欠拟合（loss≈0.4 量级）。
+
+### 9.1 P-INF 诊断结论（2026-05-31，零 GPU，纯挖 per-step detail 日志）
+
+挖 `vh-rollout-full/vh-rollout-{col}.jsonl`（脚本每步落了 prediction/script_line/parse_error/execution_error）：
+
+- **parse_fail ≈ 0**（col1/2=0%，col3=5%）→ 格式/grounding/§8 binding 在 model 路径也生效，**P-INF（推理落地缺口）排除**。
+- invalid 大头是 **"precondition failed"（33–48%）+ 大量可执行但无进展的重复动作**。
+- **实锤：模型退化成 majority-action 死循环**。失败 episode 把 `walk bedroom` 连发 14+ 次；**60/77 episode 有某预测重复 ≥5 次**；成功的几乎全是 `walk+switchon` 两步平凡任务。
+- **H1（训练 obs 渲染器 ≠ eval 渲染器 / OOD）排除**：两者用**同一个** `tools.build_virtualhome_dataset.format_observation`（eval line34 import；训练数据 line547 渲染），且 obs 含 `(character, hold, *)`/`(character, inside, *)`/`(character, close, *)`，agent 位置手持齐全。
+- **根因 = 训练侧策略塌缩**。训练集动作分布：`walk 58.4%` / open 13.4% / grab 12.3% / putin 7.0% / put 5.3% / switchon 3.7%；`walk kitchen` 单动作占 9.3%。仅 1288 transition / 254 traj（median 6 步）。模型学成"无脑 walk <room>"的多数类先验，看到 `(character, inside, bedroom)` 也不切 grab/put。
+
+**根因状态更新**：P-INF=排除；**P-DATA（量小 + 动作极不均衡）= 主因（高置信）**；P-META（直接均值放大主导先验）/ P-SFT（欠拟合）= 共因待隔离。
+
+**下一步（隔离实验，便宜优先）**：单独 rollout 一个 stage1 world-model 检查点（无 meta）在其本场景 test 上，把 SFT 质量 vs meta 均值塌缩拆开 → 再决定扩数据 / 修 meta / 调 recipe。避免盲投数 GPU-小时。
+
+### 9.2 隔离实验结论 —— 根因翻盘到 stage2（2026-05-31，零额外训练）
+
+三个便宜探针（脚本 `tools/stage1_teacher_forcing_probe.py`、`tools/stage1_single_rollout_probe.py`，复用 eval `_eval_episode` 保证环境/binding/goal 契约一致）：
+
+**(1) stage1 teacher-forcing（gold obs 链，无 rollout）—— SFT 是好的**
+- scene_0 train: 94.2%（grab/open/put/switchon 全 ~100%，预测动词分布均衡、不塌缩）。
+- scene_0 test（held-out）: 66.2%。→ SFT 学到了 obs→action，**P-SFT 欠拟合排除**。
+
+**(2) 单 stage1 world-model 自由 rollout（无 meta、无 base、无 adapter）—— 单模型其实很强**
+
+| scene | 0 | 1 | 2 | 3 | 4 | 5 | 均值 |
+|---|---|---|---|---|---|---|---|
+| 单模型 rollout SR | 63.6 | 53.8 | 36.4 | 55.6 | 72.2 | 80.0 | **≈60.3%** |
+
+对照：meta 集成的完整 WorMI col_1(seen-seen) = **22.08%**。**单个 1B world model 比集成后的整套 WorMI 高 ~3 倍。**
+
+**(3) 冒烟枪 —— stage2 adapter 停在初始化**
+- stage2 `last/pytorch_model.bin` 仅 22 个张量（cross_attention_hooks.{0,1}.*）。所有 MLP 投影 norm ≈ **32.00**（gate/up/down: 32.0187/32.0135/31.9950…）。
+- PyTorch 默认 `Linear(d,d)` 初始化权重 norm = `sqrt(d/3)`，d=3072 → `sqrt(1024)=32.0`，与观测**精确吻合**。即 MLP adapter 仅偏离初始化 ~0.06%，**几乎没被训练**。
+- 预算：λ_I=30 × λ_M=8 = 每 trainer 仅 **240 个梯度步**，inner LR=1e-5，且 `WORMI_THREADED_META_USE_BETA=0`（直接均值）每 30 步把 6 个 trainer 的 adapter 平均一次 → 更新互相抵消。
+
+**根因落定（覆盖 §9 的 P-DATA 主因假设）**：
+- 数据**够用**（足以训出均值 60% SR 的单模型）；stage1 SFT **好**；eval 管线**干净**。
+- **真主因 = stage2 meta 集成严重欠训练**：cross-attention adapter 停在初始化，冻结 base 3B 拿不到 world-model 知识，退回自身先验 → majority 动作 walk(58%) 塌缩 → 60/77 episode 死循环。
+- 翻盘逻辑：单模型本身是充分 SFT 的策略（直接产动作）；WorMI 的策略是**冻结 base 3B**，全靠 adapter 把 world 知识注进来。adapter≈随机 → 等于裸跑没学过动作格式的 base 3B。
+
+**修复方向（stage2，非数据）**：大幅加 stage2 预算让 adapter 真正离开初始化 —— 提高 adapter LR（1e-5 对 from-init 的 MLP 太小）、增大 λ_M（8→数十）、并复核直接均值是否在抵消更新。重训 stage2（stage1 复用）后重评，看集成 SR 是否向单模型 60% 收敛甚至超过（WorMI 的卖点是集成+检索应 > 任何单模型）。
